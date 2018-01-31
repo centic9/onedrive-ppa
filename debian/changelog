@@ -1,0 +1,52 @@
+onedrive (1.1.20170919-2ubuntu2) bionic; urgency=medium
+
+  * No-change rebuild for phobos-ldc soname change.
+
+ -- Matthias Klose <doko@ubuntu.com>  Wed, 31 Jan 2018 04:01:57 +0100
+
+onedrive (1.1.20170919-2ubuntu1) bionic; urgency=medium
+
+  * Tweak gdc patch to fix build failure
+
+ -- Gianfranco Costamagna <locutusofborg@debian.org>  Sat, 09 Dec 2017 14:19:18 +0100
+
+onedrive (1.1.20170919-2) unstable; urgency=medium
+
+  * switch to gdc
+  * bump standards version, no changes necessary
+
+ -- Norbert Preining <preining@debian.org>  Wed, 15 Nov 2017 15:25:51 +0900
+
+onedrive (1.1.20170919-1) unstable; urgency=medium
+
+  * New upstream version 1.1.20170919
+  * update/remove patches
+  * bump standards version, no changes necessary
+
+ -- Norbert Preining <preining@debian.org>  Tue, 19 Sep 2017 15:18:26 +0900
+
+onedrive (1.1.20170523-1) unstable; urgency=medium
+
+  * new checkout from git
+
+ -- Norbert Preining <preining@debian.org>  Tue, 23 May 2017 20:26:56 +0900
+
+onedrive (1.1.20170106-1) unstable; urgency=medium
+
+  * new checkout from git
+  * allow building with ldmd2
+
+ -- Norbert Preining <preining@debian.org>  Tue, 24 Jan 2017 11:31:22 +0900
+
+onedrive (1.1.20161012-2) unstable; urgency=medium
+
+  * add patch to fix service file, and install it into right place
+    (Closes: #842426) (Thanks to Alam Arias)
+
+ -- Norbert Preining <preining@debian.org>  Sat, 29 Oct 2016 14:55:42 +0900
+
+onedrive (1.1.20161012-1) unstable; urgency=medium
+
+  * First release (Closes: #830946)
+
+ -- Norbert Preining <preining@debian.org>  Wed, 12 Oct 2016 13:39:59 +0900
