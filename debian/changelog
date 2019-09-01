@@ -1,14 +1,134 @@
-onedrive (1.1.20170919-2ubuntu2) bionic; urgency=medium
+onedrive (2.3.9-1) unstable; urgency=medium
 
-  * No-change rebuild for phobos-ldc soname change.
+  * new upstream release
+  * add -b debian to vcs-git
 
- -- Matthias Klose <doko@ubuntu.com>  Wed, 31 Jan 2018 04:01:57 +0100
+ -- Norbert Preining <norbert@preining.info>  Sun, 01 Sep 2019 10:43:05 +0900
 
-onedrive (1.1.20170919-2ubuntu1) bionic; urgency=medium
+onedrive (2.3.8-2) unstable; urgency=medium
 
-  * Tweak gdc patch to fix build failure
+  * disable init.d starting of onedrive
 
- -- Gianfranco Costamagna <locutusofborg@debian.org>  Sat, 09 Dec 2017 14:19:18 +0100
+ -- Norbert Preining <norbert@preining.info>  Sun, 18 Aug 2019 08:51:51 +0900
+
+onedrive (2.3.8-1) unstable; urgency=medium
+
+  * new upstream release
+  * update patch
+  * init.d script support
+
+ -- Norbert Preining <norbert@preining.info>  Sun, 18 Aug 2019 08:26:45 +0900
+
+onedrive (2.3.7-3) unstable; urgency=medium
+
+  * Try to work around disappearing systemd pkg-config on sbuild hosts
+    (why on earth?) (Closes: #932317)
+
+ -- Norbert Preining <norbert@preining.info>  Thu, 18 Jul 2019 01:08:00 +0900
+
+onedrive (2.3.7-2) unstable; urgency=medium
+
+  * Source only upload
+
+ -- Norbert Preining <norbert@preining.info>  Wed, 17 Jul 2019 11:48:37 +0900
+
+onedrive (2.3.7-1) unstable; urgency=medium
+
+  * new upstream release - fixes a critical bug in 2.3.6
+
+ -- Norbert Preining <norbert@preining.info>  Thu, 04 Jul 2019 00:12:45 +0900
+
+onedrive (2.3.6-1) unstable; urgency=medium
+
+  * new upstream release
+  * update patch
+
+ -- Norbert Preining <norbert@preining.info>  Wed, 03 Jul 2019 07:52:35 +0900
+
+onedrive (2.3.5-1) unstable; urgency=medium
+
+  * new upstream release
+  * update patches
+
+ -- Norbert Preining <norbert@preining.info>  Wed, 19 Jun 2019 11:08:54 +0900
+
+onedrive (2.3.4-1) experimental; urgency=medium
+
+  * new upstream release (2.3.4)
+  * update patches and rules file for changed layout
+
+ -- Norbert Preining <norbert@preining.info>  Thu, 13 Jun 2019 09:14:02 +0900
+
+onedrive (2.3.3-1) experimental; urgency=medium
+
+  * new upstream release (2.3.3)
+  * update patches
+  * install completions
+
+ -- Norbert Preining <norbert@preining.info>  Tue, 16 Apr 2019 11:55:40 +0900
+
+onedrive (2.3.2-1) experimental; urgency=medium
+
+  * new upstream releases (2.3.{0,1,2}
+  * update patches
+
+ -- Norbert Preining <norbert@preining.info>  Tue, 02 Apr 2019 11:10:36 +0900
+
+onedrive (2.2.6-2) unstable; urgency=medium
+
+  * upload to unstable
+
+ -- Norbert Preining <norbert@preining.info>  Thu, 14 Mar 2019 07:45:46 +0900
+
+onedrive (2.2.6-1) experimental; urgency=medium
+
+  * new upstream release
+
+ -- Norbert Preining <norbert@preining.info>  Tue, 12 Mar 2019 17:16:36 +0900
+
+onedrive (2.2.5-1) unstable; urgency=medium
+
+  * new upstream releases
+  * enable notifications during build
+  * update Vcs fields and maintainer email
+
+ -- Norbert Preining <norbert@preining.info>  Thu, 17 Jan 2019 11:22:12 +0900
+
+onedrive (2.2.1-1) unstable; urgency=medium
+
+  * new upstream release
+    - fix file renaming support
+    - fix network error handling
+    - include man page
+  * update homepage to abraunegg gh
+  * patch rework and cleanup
+  * remove older conffile /etc/onedrive.conf
+
+ -- Norbert Preining <preining@debian.org>  Tue, 04 Dec 2018 12:06:32 +0900
+
+onedrive (2.2.0-1) unstable; urgency=medium
+
+  * New upstream version 2.2.0
+  * restrict building to archs where ldc is available
+  * use ldmd2 instead of ldc2
+
+ -- Norbert Preining <preining@debian.org>  Mon, 26 Nov 2018 10:05:51 +0900
+
+onedrive (2.1.6-1) unstable; urgency=medium
+
+  * New upstream version 2.1.6 - switching to abraunegg version
+    - syncing works again (Closes: #913744)
+
+ -- Norbert Preining <preining@debian.org>  Fri, 23 Nov 2018 10:57:57 +0900
+
+onedrive (1.1.20180922~really1.1.3-1) unstable; urgency=medium
+
+  * version 1.1.3
+  * use again ldc as it is the default d compiler
+  * adapt build system to upstream
+  * bump standards version, no changes necessary
+
+ -- Norbert Preining <preining@debian.org>  Sat, 22 Sep 2018 14:53:07 +0900
 
 onedrive (1.1.20170919-2) unstable; urgency=medium
 

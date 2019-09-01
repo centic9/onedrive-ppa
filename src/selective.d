@@ -10,6 +10,7 @@ final class SelectiveSync
 {
 	private string[] paths;
 	private Regex!char mask;
+	private Regex!char dirmask;
 
 	void load(string filepath)
 	{
@@ -22,19 +23,62 @@ final class SelectiveSync
 		}
 	}
 
-	void setMask(const(char)[] mask)
+	void setFileMask(const(char)[] mask)
 	{
 		this.mask = wild2regex(mask);
 	}
 
-	bool isNameExcluded(string name)
+	void setDirMask(const(char)[] dirmask)
 	{
-		return !name.matchFirst(mask).empty;
+		this.dirmask = wild2regex(dirmask);
 	}
-
+	
+	// config file skip_dir parameter
+	bool isDirNameExcluded(string name)
+	{
+		// Does the directory name match skip_dir config entry?
+		// Returns true if the name matches a skip_dir config entry
+		// Returns false if no match
+		
+		// Try full path match first
+		if (!name.matchFirst(dirmask).empty) {
+			return true;
+		} else {
+			// check just the file name
+			string filename = baseName(name);
+			if(!filename.matchFirst(dirmask).empty) {
+				return true;
+			}
+		}
+		// no match
+		return false;
+	}
+	
+	// config file skip_file parameter
+	bool isFileNameExcluded(string name)
+	{
+		// Does the file name match skip_file config entry?
+		// Returns true if the name matches a skip_file config entry
+		// Returns false if no match
+	
+		// Try full path match first
+		if (!name.matchFirst(mask).empty) {
+			return true;
+		} else {
+			// check just the file name
+			string filename = baseName(name);
+			if(!filename.matchFirst(mask).empty) {
+				return true;
+			}
+		}
+		// no match
+		return false;
+	}
+	
+	// config sync_list file handling
 	bool isPathExcluded(string path)
 	{
-		return .isPathExcluded(path, paths);
+		return .isPathExcluded(path, paths) || .isPathMatched(path, mask) || .isPathMatched(path, dirmask);
 	}
 }
 
@@ -60,6 +104,24 @@ private bool isPathExcluded(string path, string[] allowedPaths)
 		}
 	}
 	return true;
+}
+
+// test if the given path is matched by the regex expression.
+// recursively test up the tree.
+private bool isPathMatched(string path, Regex!char mask) {
+	path = buildNormalizedPath(path);
+	auto paths = pathSplitter(path);
+
+	string prefix = "";
+	foreach(base; paths) {
+		prefix ~= base;
+		if (!path.matchFirst(mask).empty) {
+			// the given path matches something which we should skip
+			return true;
+		}
+		prefix ~= dirSeparator;
+	}
+	return false;
 }
 
 unittest

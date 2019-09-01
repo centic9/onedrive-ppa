@@ -1,8 +1,18 @@
 #!/usr/bin/make -f
 
+export DC=ldc2
+
 %:
 	dh $@
 
+override_dh_auto_configure:
+	dh_auto_configure -- --enable-completions --enable-notifications \
+		--with-zsh-completion-dir=/usr/share/zsh/vendor-completions
+
 override_dh_auto_build:
-	make debug
+	make
+	chrpath --delete onedrive
+
+override_dh_installinit:
+	dh_installinit --no-start --no-enable
 
