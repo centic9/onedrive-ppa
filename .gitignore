@@ -2,6 +2,8 @@
 onedrive
 onedrive.1
 onedrive.o
+contrib/systemd/onedrive.service
+contrib/systemd/onedrive@.service
 version
 Makefile
 config.log

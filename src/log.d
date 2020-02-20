@@ -3,7 +3,6 @@ import std.file;
 import std.datetime;
 import std.process;
 import std.conv;
-import core.memory;
 import core.sys.posix.pwd, core.sys.posix.unistd, core.stdc.string : strlen;
 import std.algorithm : splitter;
 version(Notifications) {
@@ -13,7 +12,6 @@ version(Notifications) {
 // enable verbose logging
 long verbose;
 bool writeLogFile = false;
-bool logFileWriteFailFlag = false;
 
 private bool doNotifications;
 
@@ -36,7 +34,7 @@ void init(string logDir)
 			// we got an error ..
 			writeln("\nUnable to access ", logFilePath);
 			writeln("Please manually create '",logFilePath, "' and set appropriate permissions to allow write access");
-			writeln("The requested client activity log will instead be located in your users home directory");
+			writeln("The requested client activity log will instead be located in the users home directory\n");
 		}
 	}
 }
@@ -102,7 +100,7 @@ void vdebug(T...)(T args)
 	}
 }
 
-void vdebugNewLine(T...)(T args)
+void vdebugUpload(T...)(T args)
 {
 	if (verbose >= 2) {
 		writeln("\n[DEBUG] ", args);
@@ -155,7 +153,6 @@ void notify(T...)(T args)
 
 private void logfileWriteLine(T...)(T args)
 {
-	static import std.exception;
 	// Write to log file
 	string logFileName = .logFilePath ~ .username ~ ".onedrive.log";
 	auto currentTime = Clock.currTime();
@@ -170,70 +167,23 @@ private void logfileWriteLine(T...)(T args)
 		// We cannot open the log file in logFilePath location for writing
 		// The user is not part of the standard 'users' group (GID 100)
 		// Change logfile to ~/onedrive.log putting the log file in the users home directory
-		
-		if (!logFileWriteFailFlag) {
-			// write out error message that we cant log to the requested file
-			writeln("\nUnable to write activity log to ", logFileName);
-			writeln("Please set appropriate permissions to allow write access to the logging directory for your user account");
-			writeln("The requested client activity log will instead be located in your users home directory\n");
-		
-			// set the flag so we dont keep printing this error message
-			logFileWriteFailFlag = true;
-		}
-		
 		string homePath = environment.get("HOME");
 		string logFileNameAlternate = homePath ~ "/onedrive.log";
 		logFile = File(logFileNameAlternate, "a");
 	} 
 	// Write to the log file
-	logFile.writeln(timeString, "\t", args);
+	logFile.writeln(timeString, " ", args);
 	logFile.close();
 }
 
 private string getUserName()
 {
 	auto pw = getpwuid(getuid);
-	
-	// get required details
-	auto runtime_pw_name = pw.pw_name[0 .. strlen(pw.pw_name)].splitter(',');
-	auto runtime_pw_uid = pw.pw_uid;
-	auto runtime_pw_gid = pw.pw_gid;
-	
-	// user identifiers from process
-	vdebug("Process ID: ", pw);
-	vdebug("User UID:   ", runtime_pw_uid);
-	vdebug("User GID:   ", runtime_pw_gid);
-	
-	// What should be returned as username?
-	if (!runtime_pw_name.empty && runtime_pw_name.front.length){
-		// user resolved
-		vdebug("User Name:  ", runtime_pw_name.front.idup);
-		return runtime_pw_name.front.idup;
+	auto uinfo = pw.pw_gecos[0 .. strlen(pw.pw_gecos)].splitter(',');
+	if (!uinfo.empty && uinfo.front.length){
+		return uinfo.front.idup;
 	} else {
 		// Unknown user?
-		vdebug("User Name:  unknown");
 		return "unknown";
 	}
-}
-
-void displayMemoryUsagePreGC()
-{
-// Display memory usage
-writeln("\nMemory Usage pre GC (bytes)");
-writeln("--------------------");
-writeln("memory usedSize = ", GC.stats.usedSize);
-writeln("memory freeSize = ", GC.stats.freeSize);
-// uncomment this if required, if not using LDC 1.16 as this does not exist in that version
-//writeln("memory allocatedInCurrentThread = ", GC.stats.allocatedInCurrentThread, "\n");
-}
-
-void displayMemoryUsagePostGC()
-{
-// Display memory usage
-writeln("\nMemory Usage post GC (bytes)");
-writeln("--------------------");
-writeln("memory usedSize = ", GC.stats.usedSize);
-writeln("memory freeSize = ", GC.stats.freeSize);
-// uncomment this if required, if not using LDC 1.16 as this does not exist in that version
-//writeln("memory allocatedInCurrentThread = ", GC.stats.allocatedInCurrentThread, "\n");
 }

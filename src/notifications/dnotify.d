@@ -163,7 +163,7 @@ class Notification {
 
     this(in char[] summary, in char[] body_, in char[] icon="")
         in { assert(is_initted(), "call dnotify.init() before using Notification"); }
-        do {
+        body {
             this.summary = summary;
             this.body_ = body_;
             this.icon = icon;

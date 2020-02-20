@@ -11,8 +11,6 @@ import std.stdio;
 import std.string;
 import std.algorithm;
 import std.uri;
-import std.json;
-import std.traits;
 import qxor;
 static import log;
 
@@ -109,12 +107,6 @@ Regex!char wild2regex(const(char)[] pattern)
 		case '/':
 			str ~= "\\/";
 			break;
-		case '(':
-			str ~= "\\(";
-			break;
-		case ')':
-			str ~= "\\)";
-			break;
 		default:
 			str ~= c;
 			break;
@@ -127,33 +119,13 @@ Regex!char wild2regex(const(char)[] pattern)
 // returns true if the network connection is available
 bool testNetwork()
 {
-	// Use low level HTTP struct
-	auto http = HTTP();
-	http.url = "https://login.microsoftonline.com";
-	// DNS lookup timeout
-	http.dnsTimeout = (dur!"seconds"(5));
-	// Timeout for connecting
-	http.connectTimeout = (dur!"seconds"(5));
-	// HTTP connection test method
-	http.method = HTTP.Method.head;
-	// Attempt to contact the Microsoft Online Service
 	try {
-		log.vdebug("Attempting to contact online service");
+		HTTP http = HTTP("https://login.microsoftonline.com");
+		http.dnsTimeout = (dur!"seconds"(5));
+		http.method = HTTP.Method.head;
 		http.perform();
-		log.vdebug("Shutting down HTTP engine as sucessfully reached OneDrive Online Service");
-		http.shutdown();
 		return true;
-	} catch (SocketException e) {
-		// Socket issue
-		log.vdebug("HTTP Socket Issue");
-		log.error("Cannot connect to Microsoft OneDrive Service - Socket Issue");
-		displayOneDriveErrorMessage(e.msg, getFunctionName!({}));
-		return false;
-	} catch (CurlException e) {
-		// No network connection to OneDrive Service
-		log.vdebug("No Network Connection");
-		log.error("Cannot connect to Microsoft OneDrive Service - Network Connection Issue");
-		displayOneDriveErrorMessage(e.msg, getFunctionName!({}));
+	} catch (SocketException) {
 		return false;
 	}
 }
@@ -169,7 +141,7 @@ bool readLocalFile(string path)
 		read(path,1);
 	} catch (std.file.FileException e) {
 		// unable to read the new local file
-		displayFileSystemErrorMessage(e.msg, getFunctionName!({}));
+		log.log("Skipping uploading this file as it cannot be read (file permissions or file corruption): ", path);
 		return false;
 	}
 	return true;
@@ -213,6 +185,7 @@ bool isValidName(string path)
 	matched = m.empty;
 	
 	// Additional explicit validation checks
+	if (itemName == "Icon") {matched = false;}
 	if (itemName == ".lock") {matched = false;}
 	if (itemName == "desktop.ini") {matched = false;}
 	// _vti_ cannot appear anywhere in a file or folder name
@@ -265,158 +238,6 @@ bool containsASCIIHTMLCodes(string path)
 	return m.empty;
 }
 
-// Parse and display error message received from OneDrive
-void displayOneDriveErrorMessage(string message, string callingFunction)
-{
-	log.error("\nERROR: Microsoft OneDrive API returned an error with the following message:");
-	auto errorArray = splitLines(message);
-	log.error("  Error Message:    ", errorArray[0]);
-	// Extract 'message' as the reason
-	JSONValue errorMessage = parseJSON(replace(message, errorArray[0], ""));
-	// extra debug
-	log.vdebug("Raw Error Data: ", message);
-	log.vdebug("JSON Message: ", errorMessage);
-	
-	// What is the reason for the error
-	if (errorMessage.type() == JSONType.object) {
-		// configure the error reason
-		string errorReason;
-		string requestDate;
-		string requestId;
-		
-		// set the reason for the error
-		try {
-			// Use error_description as reason
-			errorReason = errorMessage["error_description"].str;
-		} catch (JSONException e) {
-			// we dont want to do anything here
-		}
-		
-		// set the reason for the error
-		try {
-			// Use ["error"]["message"] as reason
-			errorReason = errorMessage["error"]["message"].str;	
-		} catch (JSONException e) {
-			// we dont want to do anything here
-		}
-		
-		// Display the error reason
-		if (errorReason.startsWith("<!DOCTYPE")) {
-			// a HTML Error Reason was given
-			log.error("  Error Reason:  A HTML Error response was provided. Use debug logging (--verbose --verbose) to view this error");
-			log.vdebug(errorReason);
-		} else {
-			// a non HTML Error Reason was given
-			log.error("  Error Reason:     ", errorReason);
-		}
-		
-		// Get the date of request if available
-		try {
-			// Use ["error"]["innerError"]["date"] as date
-			requestDate = errorMessage["error"]["innerError"]["date"].str;	
-		} catch (JSONException e) {
-			// we dont want to do anything here
-		}
-		
-		// Get the request-id if available
-		try {
-			// Use ["error"]["innerError"]["request-id"] as request-id
-			requestId = errorMessage["error"]["innerError"]["request-id"].str;	
-		} catch (JSONException e) {
-			// we dont want to do anything here
-		}
-		
-		// Display the date and request id if available
-		if (requestDate != "") log.error("  Error Timestamp:  ", requestDate);
-		if (requestId != "")   log.error("  API Request ID:   ", requestId);
-	}
-	
-	// Where in the code was this error generated
-	log.error("  Calling Function: ", callingFunction);
-}
-
-// Parse and display error message received from the local file system
-void displayFileSystemErrorMessage(string message, string callingFunction) 
-{
-	log.error("\nERROR: The local file system returned an error with the following message:");
-	auto errorArray = splitLines(message);
-	// What was the error message
-	log.error("  Error Message:    ", errorArray[0]);
-	// Where in the code was this error generated
-	log.error("  Calling Function: ", callingFunction);
-}
-
-// Get the function name that is being called to assist with identifying where an error is being generated
-string getFunctionName(alias func)() {
-    return __traits(identifier, __traits(parent, func)) ~ "()\n";
-}
-
-// Get the latest release version from GitHub
-string getLatestReleaseVersion() {
-	// Import curl just for this function
-	import std.net.curl;
-	char[] content;
-	JSONValue json;
-	string latestTag;
-	
-	try {
-		content = get("https://api.github.com/repos/abraunegg/onedrive/releases/latest");
-	} catch (CurlException e) {
-		// curl generated an error - meaning we could not query GitHub
-		log.vdebug("Unable to query GitHub for latest release");
-	}
-	
-	try {
-		json = content.parseJSON();
-	} catch (JSONException e) {
-		// unable to parse the content JSON, set to blank JSON
-		log.vdebug("Unable to parse GitHub JSON response");
-		json = parseJSON("{}");
-	}
-	
-	// json has to be a valid JSON object
-	if (json.type() == JSONType.object){
-		if ("tag_name" in json) {
-			// use the provided tag
-			// "tag_name": "vA.B.CC" and strip 'v'
-			latestTag = strip(json["tag_name"].str, "v");
-		} else {
-			// set to latestTag zeros
-			log.vdebug("'tag_name' unavailable in JSON response. Setting latest GitHub release version to 0.0.0");
-			latestTag = "0.0.0";
-		}
-	} else {
-		// JSONValue is not an object
-		log.vdebug("Invalid JSON Object. Setting latest GitHub release version to 0.0.0");
-		latestTag = "0.0.0";
-	}
-		
-	// return the latest github version
-	return latestTag;
-}
-
-// Check the application version versus GitHub latestTag
-void checkApplicationVersion() {
-	// calculate if the client is current version or not
-	string latestVersion = strip(getLatestReleaseVersion());
-	auto currentVersionArray = strip(strip(import("version"), "v")).split("-");
-	string applicationVersion = currentVersionArray[0];
-	
-	// display warning if not current
-	if (applicationVersion != latestVersion) {
-		// is application version is older than available on GitHub
-		if (applicationVersion < latestVersion) {
-			// application version is obsolete and unsupported
-			writeln();
-			log.logAndNotify("WARNING: Your onedrive client version is obsolete and unsupported. Please upgrade your client version.");
-			log.vlog("Application version: ", applicationVersion);
-			log.vlog("Version available:   ", latestVersion);
-			writeln();
-		}
-	}
-}
-
-// Unit Tests
 unittest
 {
 	assert(multiGlobMatch(".hidden", ".*"));
