@@ -8,8 +8,8 @@ import util;
 static import log;
 
 // relevant inotify events
-private immutable uint32_t mask = IN_ATTRIB | IN_CLOSE_WRITE | IN_CREATE |
-	IN_DELETE | IN_MOVE | IN_IGNORED | IN_Q_OVERFLOW;
+private immutable uint32_t mask = IN_CLOSE_WRITE | IN_CREATE | IN_DELETE |
+	IN_MOVE | IN_IGNORED | IN_Q_OVERFLOW;
 
 class MonitorException: ErrnoException
 {
@@ -30,7 +30,11 @@ final class Monitor
 	private string[int] cookieToPath;
 	// buffer to receive the inotify events
 	private void[] buffer;
-
+	// skip symbolic links
+	bool skip_symlinks;
+	// check for .nosync if enabled
+	bool check_nosync;
+	
 	private SelectiveSync selectiveSync;
 
 	void delegate(string path) onDirCreated;
@@ -44,12 +48,15 @@ final class Monitor
 		this.selectiveSync = selectiveSync;
 	}
 
-	void init(Config cfg, bool verbose)
+	void init(Config cfg, bool verbose, bool skip_symlinks, bool check_nosync)
 	{
 		this.verbose = verbose;
-
+		this.skip_symlinks = skip_symlinks;
+		this.check_nosync = check_nosync;
+		
+		assert(onDirCreated && onFileChanged && onDelete && onMove);
 		fd = inotify_init();
-		if (fd == -1) throw new MonitorException("inotify_init failed");
+		if (fd < 0) throw new MonitorException("inotify_init failed");
 		if (!buffer) buffer = new void[4096];
 		addRecursive(".");
 	}
@@ -62,9 +69,18 @@ final class Monitor
 
 	private void addRecursive(string dirname)
 	{
+		// skip non existing/disappeared items
+		if (!exists(dirname)) {
+			log.vlog("Not adding non-existing/disappeared directory: ", dirname);
+			return;
+		}
+
 		// skip filtered items
 		if (dirname != ".") {
-			if (selectiveSync.isNameExcluded(baseName(dirname))) {
+			if (selectiveSync.isDirNameExcluded(strip(dirname,"./"))) {
+				return;
+			}
+			if (selectiveSync.isFileNameExcluded(baseName(dirname))) {
 				return;
 			}
 			if (selectiveSync.isPathExcluded(buildNormalizedPath(dirname))) {
@@ -72,34 +88,58 @@ final class Monitor
 			}
 		}
 
-		add(dirname);
-		foreach(DirEntry entry; dirEntries(dirname, SpanMode.shallow, false)) {
-			if (entry.isDir) {
-				addRecursive(entry.name);
+		// skip symlinks if configured
+		if (isSymlink(dirname)) {
+			// if config says so we skip all symlinked items
+			if (skip_symlinks) {
+				// dont add a watch for this directory
+				return;
 			}
+		}
+		
+		// Do we need to check for .nosync? Only if check_nosync is true
+		if (check_nosync) {
+			if (exists(buildNormalizedPath(dirname) ~ "/.nosync")) {
+				log.vlog("Skipping watching path - .nosync found & --check-for-nosync enabled: ", buildNormalizedPath(dirname));
+				return;
+			}
+		}
+		
+		add(dirname);
+		try {
+			auto pathList = dirEntries(dirname, SpanMode.shallow, false);
+			foreach(DirEntry entry; pathList) {
+				if (entry.isDir) {
+					addRecursive(entry.name);
+				}
+			}
+		} catch (std.file.FileException e) {
+			log.vdebug("ERROR: ", e.msg);
+			return;
 		}
 	}
 
-	private void add(string dirname)
+	private void add(string pathname)
 	{
-		int wd = inotify_add_watch(fd, toStringz(dirname), mask);
-		if (wd == -1) {
-                    if (errno() == ENOSPC) {
-                        log.log("The maximum number of inotify wathches is probably too low.");
-                        log.log("");
-                        log.log("To see the current max number of watches run");
-                        log.log("");
-                        log.log("   sysctl fs.inotify.max_user_watches");
-                        log.log("");
-                        log.log("To change the current max number of watches to 32768 run");
-                        log.log("");
-                        log.log("   sudo sysctl fs.inotify.max_user_watches=32768");
-                        log.log("");
-                    }
-                    throw new MonitorException("inotify_add_watch failed");
-                }
-		wdToDirName[wd] = buildNormalizedPath(dirname) ~ "/";
-		log.vlog("Monitor directory: ", dirname);
+		int wd = inotify_add_watch(fd, toStringz(pathname), mask);
+		if (wd < 0) {
+			if (errno() == ENOSPC) {
+				log.log("The user limit on the total number of inotify watches has been reached.");
+				log.log("To see the current max number of watches run:");
+				log.log("sysctl fs.inotify.max_user_watches");
+				log.log("To change the current max number of watches to 524288 run:");
+				log.log("sudo sysctl fs.inotify.max_user_watches=524288");
+			}
+			if (errno() == 13) {
+				log.vlog("WARNING: inotify_add_watch failed - permission denied: ", pathname);
+				return;
+			}
+			// Flag any other errors
+			log.error("ERROR: inotify_add_watch failed: ", pathname);
+			return;
+		}
+		wdToDirName[wd] = buildNormalizedPath(pathname) ~ "/";
+		log.vlog("Monitor directory: ", pathname);
 	}
 
 	// remove a watch descriptor
@@ -107,7 +147,7 @@ final class Monitor
 	{
 		assert(wd in wdToDirName);
 		int ret = inotify_rm_watch(fd, wd);
-		if (ret == -1) throw new MonitorException("inotify_rm_watch failed");
+		if (ret < 0) throw new MonitorException("inotify_rm_watch failed");
 		log.vlog("Monitored directory removed: ", wdToDirName[wd]);
 		wdToDirName.remove(wd);
 	}
@@ -119,7 +159,7 @@ final class Monitor
 		foreach (wd, dirname; wdToDirName) {
 			if (dirname.startsWith(path)) {
 				int ret = inotify_rm_watch(fd, wd);
-				if (ret == -1) throw new MonitorException("inotify_rm_watch failed");
+				if (ret < 0) throw new MonitorException("inotify_rm_watch failed");
 				wdToDirName.remove(wd);
 				log.vlog("Monitored directory removed: ", dirname);
 			}
@@ -136,18 +176,17 @@ final class Monitor
 
 	void update(bool useCallbacks = true)
 	{
-		assert(onDirCreated && onFileChanged && onDelete && onMove);
-		pollfd[1] fds = void;
-		fds[0].fd = fd;
-		fds[0].events = POLLIN;
+		pollfd fds = {
+			fd: fd,
+			events: POLLIN
+		};
 
 		while (true) {
-			int ret = poll(fds.ptr, 1, 0);
+			int ret = poll(&fds, 1, 0);
 			if (ret == -1) throw new MonitorException("poll failed");
 			else if (ret == 0) break; // no events available
 
-			assert(fds[0].revents & POLLIN);
-			size_t length = read(fds[0].fd, buffer.ptr, buffer.length);
+			size_t length = read(fd, buffer.ptr, buffer.length);
 			if (length == -1) throw new MonitorException("read failed");
 
 			int i = 0;
@@ -165,7 +204,10 @@ final class Monitor
 
 				// skip filtered items
 				path = getPath(event);
-				if (selectiveSync.isNameExcluded(baseName(path))) {
+				if (selectiveSync.isDirNameExcluded(strip(path,"./"))) {
+					goto skip;
+				}
+				if (selectiveSync.isFileNameExcluded(strip(path,"./"))) {
 					goto skip;
 				}
 				if (selectiveSync.isPathExcluded(path)) {
@@ -173,8 +215,10 @@ final class Monitor
 				}
 
 				if (event.mask & IN_MOVED_FROM) {
+					log.vdebug("event IN_MOVED_FROM: ", path);
 					cookieToPath[event.cookie] = path;
 				} else if (event.mask & IN_MOVED_TO) {
+					log.vdebug("event IN_MOVED_TO: ", path);
 					if (event.mask & IN_ISDIR) addRecursive(path);
 					auto from = event.cookie in cookieToPath;
 					if (from) {
@@ -189,25 +233,28 @@ final class Monitor
 						}
 					}
 				} else if (event.mask & IN_CREATE) {
+					log.vdebug("event IN_CREATE: ", path);
 					if (event.mask & IN_ISDIR) {
 						addRecursive(path);
 						if (useCallbacks) onDirCreated(path);
 					}
 				} else if (event.mask & IN_DELETE) {
+					log.vdebug("event IN_DELETE: ", path);
 					if (useCallbacks) onDelete(path);
-				} else if (event.mask & IN_ATTRIB || event.mask & IN_CLOSE_WRITE) {
-					if (!(event.mask & IN_ISDIR)) {
-						if (useCallbacks) onFileChanged(path);
-					}
+				} else if ((event.mask & IN_CLOSE_WRITE) && !(event.mask & IN_ISDIR)) {
+					log.vdebug("event IN_CLOSE_WRITE and ...: ", path);
+					if (useCallbacks) onFileChanged(path);
 				} else {
-					log.log("Unknow inotify event: ", format("%#x", event.mask));
+					log.vdebug("event unhandled: ", path);
+					assert(0);
 				}
 
 				skip:
 				i += inotify_event.sizeof + event.len;
 			}
-			// assume that the items moved outside the watched directory has been deleted
+			// assume that the items moved outside the watched directory have been deleted
 			foreach (cookie, path; cookieToPath) {
+				log.vdebug("deleting (post loop): ", path);
 				if (useCallbacks) onDelete(path);
 				remove(path);
 				cookieToPath.remove(cookie);
