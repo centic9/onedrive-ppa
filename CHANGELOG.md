@@ -3,6 +3,78 @@
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 2.3.13 - 2019-12-31
+### Fixed
+*   Change the sync list override flag to false as default when not using sync_list
+*   Fix --dry-run output when using --upload-only & --no-remote-delete and deleting local files
+
+### Added
+*   Add a verbose log entry when a monitor sync loop with OneDrive starts & completes
+
+### Changed
+*   Remove logAndNotify for 'processing X changes' as it is excessive for each change bundle to inform the desktop of the number of changes the client is processing
+
+### Updated
+*   Updated INSTALL.md with Ubuntu 16.x i386 build instructions to reflect working configuration on legacy hardware
+*   Updated INSTALL.md with details of Linux packages
+*   Updated INSTALL.md build instructions for CentOS platforms
+
+## 2.3.12 - 2019-12-04
+### Fixed
+*   Retry session upload fragment when transient errors occur to prevent silent upload failure
+*   Update Microsoft restriction and limitations about windows naming files to include '~' for folder names
+*   Docker guide fixes, add multiple account setup instructions
+*   Check database for excluded sync_list items previously in scope
+*   Catch DNS resolution error
+*   Fix where an item now out of scope should be flagged for local delete
+*   Fix rebuilding of onedrive, but ensure version is properly updated 
+*   Update Ubuntu i386 build instructions to use DMD using preferred method
+
+### Added
+*   Add debug message to when a message is sent to dbus or notification daemon
+*   Add i386 instructions for legacy low memory platforms using LDC
+
+## 2.3.11 - 2019-11-05
+### Fixed
+*   Fix typo in the documentation regarding invalid config when upgrading from 'skilion' codebase
+*   Fix handling of skip_dir, skip_file & sync_list config options
+*   Fix typo in the documentation regarding sync_list
+*   Fix log output to be consistent with sync_list exclusion
+*   Fix 'Processing X changes' output to be more reflective of actual activity when using sync_list
+*   Remove unused and unexported SED variable in Makefile.in 
+*   Handle curl exceptions and timeouts better with backoff/retry logic
+*   Update skip_dir pattern matching when using wildcards
+*   Fix when a full rescan is performed when using sync_list
+*   Fix 'Key not found: name' when computing skip_dir path
+*   Fix call from --monitor to observe --no-remote-delete
+*   Fix unhandled exception when monitor initialisation failure occurs due to too many open local files
+*   Fix unhandled 412 error response from OneDrive API when moving files right after upload
+*   Fix --monitor when used with --download-only. This fixes a regression introduced in 12947d1.
+*   Fix if --single-directory is being used, and we are using --monitor, only set inotify watches on the single directory
+
+### Changed
+*   Move JSON logging output from error messages to debug output
+
+## 2.3.10 - 2019-10-01
+### Fixed
+*   Fix searching for 'name' when deleting a synced item, if the OneDrive API does not return the expected details in the API call
+*   Fix abnormal termination when no Internet connection
+*   Fix downloading of files from OneDrive Personal Shared Folders when the OneDrive API responds with unexpected additional path data
+*   Fix logging of 'initialisation' of client to actually when the attempt to initialise is performed
+*   Fix when using a sync_list file, using deltaLink will actually 'miss' changes (moves & deletes) on OneDrive as using sync_list discards changes
+*   Fix OneDrive API status code 500 handling when uploading files as error message is not correct
+*   Fix crash when resume_upload file is not a valid JSON 
+*   Fix crash when a file system exception is generated when attempting to update the file date & time and this fails
+
+### Added
+*   If there is a case-insensitive match error, also return the remote name from the response
+*   Make user-agent string a configuration option & add to config file
+*   Set default User-Agent to 'OneDrive Client for Linux v{version}'
+
+### Changed
+*   Make verbose logging output optional on Docker
+*   Enable --resync & debug client output via environment variables on Docker
+
 ## 2.3.9 - 2019-09-01
 ### Fixed
 *   Catch a 403 Forbidden exception when querying Sharepoint Library Names
