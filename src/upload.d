@@ -173,12 +173,32 @@ struct UploadSession
 			Progress p = new Progress(iteration);
 			p.title = "Uploading";
 			long fragmentCount = 0;
+			long fragSize = 0;
+			
+			// Initialise the download bar at 0%
+			p.next();
 			
 			while (true) {
 				fragmentCount++;
-				log.vdebugUpload("Fragment: ", fragmentCount, " of ", iteration);
+				log.vdebugNewLine("Fragment: ", fragmentCount, " of ", iteration);
 				p.next();
-				long fragSize = fragmentSize < fileSize - offset ? fragmentSize : fileSize - offset;
+				log.vdebugNewLine("fragmentSize: ", fragmentSize, "offset: ", offset, " fileSize: ", fileSize );
+				fragSize = fragmentSize < fileSize - offset ? fragmentSize : fileSize - offset;
+				log.vdebugNewLine("Using fragSize: ", fragSize);
+				
+				// fragSize must not be a negative value
+				if (fragSize < 0) {
+					// Session upload will fail
+					// not a JSON object - fragment upload failed
+					log.vlog("File upload session failed - invalid calculation of fragment size");
+					if (exists(sessionFilePath)) {
+						remove(sessionFilePath);
+					}
+					// set response to null as error
+					response = null;
+					return response;
+				}
+				
 				// If the resume upload fails, we need to check for a return code here
 				try {
 					response = onedrive.uploadFragment(
@@ -189,6 +209,10 @@ struct UploadSession
 						fileSize
 					);
 				} catch (OneDriveException e) {
+					// if a 100 response is generated, continue
+					if (e.httpStatusCode == 100) {
+						continue;
+					}
 					// there was an error response from OneDrive when uploading the file fragment
 					// handle 'HTTP request returned status code 429 (Too Many Requests)' first
 					if (e.httpStatusCode == 429) {
@@ -204,7 +228,7 @@ struct UploadSession
 						// insert a new line as well, so that the below error is inserted on the console in the right location
 						log.vlog("\nFragment upload failed - received an exception response from OneDrive");
 						// display what the error is
-						displayOneDriveErrorMessage(e.msg);
+						displayOneDriveErrorMessage(e.msg, getFunctionName!({}));
 						// retry fragment upload in case error is transient
 						log.vlog("Retrying fragment upload");
 					}
@@ -221,7 +245,7 @@ struct UploadSession
 						// OneDrive threw another error on retry
 						log.vlog("Retry to upload fragment failed");
 						// display what the error is
-						displayOneDriveErrorMessage(e.msg);
+						displayOneDriveErrorMessage(e.msg, getFunctionName!({}));
 						// set response to null as the fragment upload was in error twice
 						response = null;
 					}
@@ -261,16 +285,16 @@ struct UploadSession
 		}
 	}
 	
-	// Parse and display error message received from OneDrive
-	private void displayOneDriveErrorMessage(string message) {
-		log.error("ERROR: OneDrive returned an error with the following message:");
-		auto errorArray = splitLines(message);
-		log.error("  Error Message: ", errorArray[0]);
-		// extract 'message' as the reason
-		JSONValue errorMessage = parseJSON(replace(message, errorArray[0], ""));
-		log.error("  Error Reason:  ", errorMessage["error"]["message"].str);	
+	string getUploadSessionLocalFilePath() {
+		// return the session file path
+		string localPath = "";
+		if ("localPath" in session){
+			localPath = session["localPath"].str;
+		}
+		return localPath;
 	}
-
+	
+	// save session details to temp file
 	private void save()
 	{
 		std.file.write(sessionFilePath, session.toString());
