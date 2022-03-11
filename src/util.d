@@ -11,6 +11,8 @@ import std.stdio;
 import std.string;
 import std.algorithm;
 import std.uri;
+import std.json;
+import std.traits;
 import qxor;
 static import log;
 
@@ -107,6 +109,12 @@ Regex!char wild2regex(const(char)[] pattern)
 		case '/':
 			str ~= "\\/";
 			break;
+		case '(':
+			str ~= "\\(";
+			break;
+		case ')':
+			str ~= "\\)";
+			break;
 		default:
 			str ~= c;
 			break;
@@ -119,13 +127,33 @@ Regex!char wild2regex(const(char)[] pattern)
 // returns true if the network connection is available
 bool testNetwork()
 {
+	// Use low level HTTP struct
+	auto http = HTTP();
+	http.url = "https://login.microsoftonline.com";
+	// DNS lookup timeout
+	http.dnsTimeout = (dur!"seconds"(5));
+	// Timeout for connecting
+	http.connectTimeout = (dur!"seconds"(5));
+	// HTTP connection test method
+	http.method = HTTP.Method.head;
+	// Attempt to contact the Microsoft Online Service
 	try {
-		HTTP http = HTTP("https://login.microsoftonline.com");
-		http.dnsTimeout = (dur!"seconds"(5));
-		http.method = HTTP.Method.head;
+		log.vdebug("Attempting to contact online service");
 		http.perform();
+		log.vdebug("Shutting down HTTP engine as sucessfully reached OneDrive Online Service");
+		http.shutdown();
 		return true;
-	} catch (SocketException) {
+	} catch (SocketException e) {
+		// Socket issue
+		log.vdebug("HTTP Socket Issue");
+		log.error("Cannot connect to Microsoft OneDrive Service - Socket Issue");
+		displayOneDriveErrorMessage(e.msg, getFunctionName!({}));
+		return false;
+	} catch (CurlException e) {
+		// No network connection to OneDrive Service
+		log.vdebug("No Network Connection");
+		log.error("Cannot connect to Microsoft OneDrive Service - Network Connection Issue");
+		displayOneDriveErrorMessage(e.msg, getFunctionName!({}));
 		return false;
 	}
 }
@@ -141,7 +169,7 @@ bool readLocalFile(string path)
 		read(path,1);
 	} catch (std.file.FileException e) {
 		// unable to read the new local file
-		log.log("Skipping uploading this file as it cannot be read (file permissions or file corruption): ", path);
+		displayFileSystemErrorMessage(e.msg, getFunctionName!({}));
 		return false;
 	}
 	return true;
@@ -185,7 +213,6 @@ bool isValidName(string path)
 	matched = m.empty;
 	
 	// Additional explicit validation checks
-	if (itemName == "Icon") {matched = false;}
 	if (itemName == ".lock") {matched = false;}
 	if (itemName == "desktop.ini") {matched = false;}
 	// _vti_ cannot appear anywhere in a file or folder name
@@ -238,6 +265,93 @@ bool containsASCIIHTMLCodes(string path)
 	return m.empty;
 }
 
+// Parse and display error message received from OneDrive
+void displayOneDriveErrorMessage(string message, string callingFunction)
+{
+	log.error("\nERROR: Microsoft OneDrive API returned an error with the following message:");
+	auto errorArray = splitLines(message);
+	log.error("  Error Message:    ", errorArray[0]);
+	// Extract 'message' as the reason
+	JSONValue errorMessage = parseJSON(replace(message, errorArray[0], ""));
+	// extra debug
+	log.vdebug("Raw Error Data: ", message);
+	log.vdebug("JSON Message: ", errorMessage);
+	
+	// What is the reason for the error
+	if (errorMessage.type() == JSONType.object) {
+		// configure the error reason
+		string errorReason;
+		string requestDate;
+		string requestId;
+		
+		// set the reason for the error
+		try {
+			// Use error_description as reason
+			errorReason = errorMessage["error_description"].str;
+		} catch (JSONException e) {
+			// we dont want to do anything here
+		}
+		
+		// set the reason for the error
+		try {
+			// Use ["error"]["message"] as reason
+			errorReason = errorMessage["error"]["message"].str;	
+		} catch (JSONException e) {
+			// we dont want to do anything here
+		}
+		
+		// Display the error reason
+		if (errorReason.startsWith("<!DOCTYPE")) {
+			// a HTML Error Reason was given
+			log.error("  Error Reason:  A HTML Error response was provided. Use debug logging (--verbose --verbose) to view this error");
+			log.vdebug(errorReason);
+		} else {
+			// a non HTML Error Reason was given
+			log.error("  Error Reason:     ", errorReason);
+		}
+		
+		// Get the date of request if available
+		try {
+			// Use ["error"]["innerError"]["date"] as date
+			requestDate = errorMessage["error"]["innerError"]["date"].str;	
+		} catch (JSONException e) {
+			// we dont want to do anything here
+		}
+		
+		// Get the request-id if available
+		try {
+			// Use ["error"]["innerError"]["request-id"] as request-id
+			requestId = errorMessage["error"]["innerError"]["request-id"].str;	
+		} catch (JSONException e) {
+			// we dont want to do anything here
+		}
+		
+		// Display the date and request id if available
+		if (requestDate != "") log.error("  Error Timestamp:  ", requestDate);
+		if (requestId != "")   log.error("  API Request ID:   ", requestId);
+	}
+	
+	// Where in the code was this error generated
+	log.error("  Calling Function: ", callingFunction);
+}
+
+// Parse and display error message received from the local file system
+void displayFileSystemErrorMessage(string message, string callingFunction) 
+{
+	log.error("\nERROR: The local file system returned an error with the following message:");
+	auto errorArray = splitLines(message);
+	// What was the error message
+	log.error("  Error Message:    ", errorArray[0]);
+	// Where in the code was this error generated
+	log.error("  Calling Function: ", callingFunction);
+}
+
+// Get the function name that is being called to assist with identifying where an error is being generated
+string getFunctionName(alias func)() {
+    return __traits(identifier, __traits(parent, func)) ~ "()\n";
+}
+
+// Unit Tests
 unittest
 {
 	assert(multiGlobMatch(".hidden", ".*"));

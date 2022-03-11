@@ -1,15 +1,15 @@
 import core.sys.linux.sys.inotify;
 import core.stdc.errno;
 import core.sys.posix.poll, core.sys.posix.unistd;
-import std.exception, std.file, std.path, std.regex, std.stdio, std.string;
+import std.exception, std.file, std.path, std.regex, std.stdio, std.string, std.algorithm;
+import core.stdc.stdlib;
 import config;
 import selective;
 import util;
 static import log;
 
 // relevant inotify events
-private immutable uint32_t mask = IN_CLOSE_WRITE | IN_CREATE | IN_DELETE |
-	IN_MOVE | IN_IGNORED | IN_Q_OVERFLOW;
+private immutable uint32_t mask = IN_CLOSE_WRITE | IN_CREATE | IN_DELETE | IN_MOVE | IN_IGNORED | IN_Q_OVERFLOW;
 
 class MonitorException: ErrnoException
 {
@@ -85,19 +85,36 @@ final class Monitor
 			return;
 		}
 
-		// skip filtered items
+		// Skip the monitoring of any user filtered items
 		if (dirname != ".") {
-			if (selectiveSync.isDirNameExcluded(strip(dirname,"./"))) {
-				return;
+			// Is the directory name a match to a skip_dir entry?
+			// The path that needs to be checked needs to include the '/'
+			// This due to if the user has specified in skip_dir an exclusive path: '/path' - that is what must be matched
+			if (isDir(dirname)) {
+				if (selectiveSync.isDirNameExcluded(dirname.strip('.'))) {
+					// dont add a watch for this item
+					log.vdebug("Skipping monitoring due to skip_dir match: ", dirname);
+					return;
+				}
 			}
-			if (selectiveSync.isFileNameExcluded(baseName(dirname))) {
-				return;
+			if (isFile(dirname)) {
+				// Is the filename a match to a skip_file entry?
+				// The path that needs to be checked needs to include the '/'
+				// This due to if the user has specified in skip_file an exclusive path: '/path/file' - that is what must be matched
+				if (selectiveSync.isFileNameExcluded(dirname.strip('.'))) {
+					// dont add a watch for this item
+					log.vdebug("Skipping monitoring due to skip_file match: ", dirname);
+					return;
+				}
 			}
+			// is the path exluded by sync_list?
 			if (selectiveSync.isPathExcludedViaSyncList(buildNormalizedPath(dirname))) {
+				// dont add a watch for this item
+				log.vdebug("Skipping monitoring due to sync_list match: ", dirname);
 				return;
 			}
 		}
-
+		
 		// skip symlinks if configured
 		if (isSymlink(dirname)) {
 			// if config says so we skip all symlinked items
@@ -115,17 +132,44 @@ final class Monitor
 			}
 		}
 		
+		// passed all potential exclusions
+		// add inotify watch for this path / directory / file
+		log.vdebug("Calling add() for this dirname: ", dirname);
 		add(dirname);
-		try {
-			auto pathList = dirEntries(dirname, SpanMode.shallow, false);
-			foreach(DirEntry entry; pathList) {
-				if (entry.isDir) {
-					addRecursive(entry.name);
+		
+		// if this is a directory, recursivly add this path
+		if (isDir(dirname)) {
+			// try and get all the directory entities for this path
+			try {
+				auto pathList = dirEntries(dirname, SpanMode.shallow, false);
+				foreach(DirEntry entry; pathList) {
+					if (entry.isDir) {
+						log.vdebug("Calling addRecursive() for this directory: ", entry.name);
+						addRecursive(entry.name);
+					}
+				}
+			// catch any error which is generated
+			} catch (std.file.FileException e) {
+				// Standard filesystem error
+				displayFileSystemErrorMessage(e.msg, getFunctionName!({}));
+				return;
+			} catch (Exception e) {
+				// Issue #1154 handling
+				// Need to check for: Failed to stat file in error message
+				if (canFind(e.msg, "Failed to stat file")) {
+					// File system access issue
+					log.error("ERROR: The local file system returned an error with the following message:");
+					log.error("  Error Message: ", e.msg);
+					log.error("ACCESS ERROR: Please check your UID and GID access to this file, as the permissions on this file is preventing this application to read it");
+					log.error("\nFATAL: Exiting application to avoid deleting data due to local file system access issues\n");
+					// Must exit here
+					exit(-1);
+				} else {
+					// some other error
+					displayFileSystemErrorMessage(e.msg, getFunctionName!({}));
+					return;
 				}
 			}
-		} catch (std.file.FileException e) {
-			log.vdebug("ERROR: ", e.msg);
-			return;
 		}
 	}
 
@@ -141,15 +185,34 @@ final class Monitor
 				log.log("sudo sysctl fs.inotify.max_user_watches=524288");
 			}
 			if (errno() == 13) {
-				log.vlog("WARNING: inotify_add_watch failed - permission denied: ", pathname);
-				return;
+				if ((selectiveSync.getSkipDotfiles()) && (selectiveSync.isDotFile(pathname))) {
+					// no misleading output that we could not add a watch due to permission denied
+					return;
+				} else {
+					log.vlog("WARNING: inotify_add_watch failed - permission denied: ", pathname);
+					return;
+				}
 			}
 			// Flag any other errors
 			log.error("ERROR: inotify_add_watch failed: ", pathname);
 			return;
 		}
+		
+		// Add path to inotify watch - required regardless if a '.folder' or 'folder'
 		wdToDirName[wd] = buildNormalizedPath(pathname) ~ "/";
-		log.vlog("Monitor directory: ", pathname);
+		log.vdebug("inotify_add_watch successfully added for: ", pathname);
+		
+		// Do we log that we are monitoring this directory?
+		if (isDir(pathname)) {
+			// This is a directory			
+			// is the path exluded if skip_dotfiles configured and path is a .folder?
+			if ((selectiveSync.getSkipDotfiles()) && (selectiveSync.isDotFile(pathname))) {
+				// no misleading output that we are monitoring this directory
+				return;
+			}
+			// Log that this is directory is being monitored
+			log.vlog("Monitor directory: ", pathname);
+		}
 	}
 
 	// remove a watch descriptor
@@ -181,6 +244,7 @@ final class Monitor
 	{
 		string path = wdToDirName[event.wd];
 		if (event.len > 0) path ~= fromStringz(event.name.ptr);
+		log.vdebug("inotify path event for: ", path);
 		return path;
 	}
 
@@ -203,7 +267,38 @@ final class Monitor
 			while (i < length) {
 				inotify_event *event = cast(inotify_event*) &buffer[i];
 				string path;
-
+				string evalPath;
+				// inotify event debug
+				log.vdebug("inotify event wd: ", event.wd);
+				log.vdebug("inotify event mask: ", event.mask);
+				log.vdebug("inotify event cookie: ", event.cookie);
+				log.vdebug("inotify event len: ", event.len);
+				log.vdebug("inotify event name: ", event.name);
+				if (event.mask & IN_ACCESS) log.vdebug("inotify event flag: IN_ACCESS");
+				if (event.mask & IN_MODIFY) log.vdebug("inotify event flag: IN_MODIFY");
+				if (event.mask & IN_ATTRIB) log.vdebug("inotify event flag: IN_ATTRIB");
+				if (event.mask & IN_CLOSE_WRITE) log.vdebug("inotify event flag: IN_CLOSE_WRITE");
+				if (event.mask & IN_CLOSE_NOWRITE) log.vdebug("inotify event flag: IN_CLOSE_NOWRITE");
+				if (event.mask & IN_MOVED_FROM) log.vdebug("inotify event flag: IN_MOVED_FROM");
+				if (event.mask & IN_MOVED_TO) log.vdebug("inotify event flag: IN_MOVED_TO");
+				if (event.mask & IN_CREATE) log.vdebug("inotify event flag: IN_CREATE");
+				if (event.mask & IN_DELETE) log.vdebug("inotify event flag: IN_DELETE");
+				if (event.mask & IN_DELETE_SELF) log.vdebug("inotify event flag: IN_DELETE_SELF");
+				if (event.mask & IN_MOVE_SELF) log.vdebug("inotify event flag: IN_MOVE_SELF");
+				if (event.mask & IN_UNMOUNT) log.vdebug("inotify event flag: IN_UNMOUNT");
+				if (event.mask & IN_Q_OVERFLOW) log.vdebug("inotify event flag: IN_Q_OVERFLOW");
+				if (event.mask & IN_IGNORED) log.vdebug("inotify event flag: IN_IGNORED");
+				if (event.mask & IN_CLOSE) log.vdebug("inotify event flag: IN_CLOSE");
+				if (event.mask & IN_MOVE) log.vdebug("inotify event flag: IN_MOVE");
+				if (event.mask & IN_ONLYDIR) log.vdebug("inotify event flag: IN_ONLYDIR");
+				if (event.mask & IN_DONT_FOLLOW) log.vdebug("inotify event flag: IN_DONT_FOLLOW");
+				if (event.mask & IN_EXCL_UNLINK) log.vdebug("inotify event flag: IN_EXCL_UNLINK");
+				if (event.mask & IN_MASK_ADD) log.vdebug("inotify event flag: IN_MASK_ADD");
+				if (event.mask & IN_ISDIR) log.vdebug("inotify event flag: IN_ISDIR");
+				if (event.mask & IN_ONESHOT) log.vdebug("inotify event flag: IN_ONESHOT");
+				if (event.mask & IN_ALL_EVENTS) log.vdebug("inotify event flag: IN_ALL_EVENTS");
+				
+				// skip events that need to be ignored
 				if (event.mask & IN_IGNORED) {
 					// forget the directory associated to the watch descriptor
 					wdToDirName.remove(event.wd);
@@ -212,18 +307,40 @@ final class Monitor
 					throw new MonitorException("Inotify overflow, events missing");
 				}
 
-				// skip filtered items
+				// if the event is not to be ignored, obtain path
 				path = getPath(event);
-				if (selectiveSync.isDirNameExcluded(strip(path,"./"))) {
-					goto skip;
+				// configure the skip_dir & skip skip_file comparison item
+				evalPath = path.strip('.');
+				
+				// Skip events that should be excluded based on application configuration
+				// We cant use isDir or isFile as this information is missing from the inotify event itself
+				// Thus this causes a segfault when attempting to query this - https://github.com/abraunegg/onedrive/issues/995
+				
+				// Based on the 'type' of event & object type (directory or file) check that path against the 'right' user exclusions
+				// Directory events should only be compared against skip_dir and file events should only be compared against skip_file
+				if (event.mask & IN_ISDIR) {
+					// The event in question contains IN_ISDIR event mask, thus highly likely this is an event on a directory
+					// This due to if the user has specified in skip_dir an exclusive path: '/path' - that is what must be matched
+					if (selectiveSync.isDirNameExcluded(evalPath)) {
+						// The path to evaluate matches a path that the user has configured to skip
+						goto skip;
+					}
+				} else {
+					// The event in question missing the IN_ISDIR event mask, thus highly likely this is an event on a file
+					// This due to if the user has specified in skip_file an exclusive path: '/path/file' - that is what must be matched
+					if (selectiveSync.isFileNameExcluded(evalPath)) {
+						// The path to evaluate matches a file that the user has configured to skip
+						goto skip;
+					}
 				}
-				if (selectiveSync.isFileNameExcluded(strip(path,"./"))) {
-					goto skip;
-				}
+				
+				// is the path, excluded via sync_list
 				if (selectiveSync.isPathExcludedViaSyncList(path)) {
+					// The path to evaluate matches a directory or file that the user has configured not to include in the sync
 					goto skip;
 				}
-
+				
+				// handle the inotify events
 				if (event.mask & IN_MOVED_FROM) {
 					log.vdebug("event IN_MOVED_FROM: ", path);
 					cookieToPath[event.cookie] = path;
