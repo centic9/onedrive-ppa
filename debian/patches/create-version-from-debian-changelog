@@ -2,9 +2,11 @@
  Makefile.in |    8 ++------
  1 file changed, 2 insertions(+), 6 deletions(-)
 
---- onedrive.git.orig/Makefile.in
-+++ onedrive.git/Makefile.in
-@@ -149,10 +149,6 @@ ifeq ($(COMPLETIONS),yes)
+Index: git/Makefile.in
+===================================================================
+--- git.orig/Makefile.in	2022-03-11 11:01:22.000000000 +0100
++++ git/Makefile.in	2022-03-11 11:01:39.000000000 +0100
+@@ -149,10 +149,6 @@
  	rm -f $(DESTDIR)$(BASH_COMPLETION_DIR)/onedrive
  endif
  
