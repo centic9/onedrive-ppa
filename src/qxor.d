@@ -1,15 +1,15 @@
 import std.algorithm;
-import std.digest.digest;
+import std.digest;
 
 // implementation of the QuickXorHash algorithm in D
 // https://github.com/OneDrive/onedrive-api-docs/blob/live/docs/code-snippets/quickxorhash.md
 struct QuickXor
 {
-	private immutable int widthInBits = 160;
-	private immutable size_t lengthInBytes = (widthInBits - 1) / 8 + 1;
-	private immutable size_t lengthInQWords = (widthInBits - 1) / 64 + 1;
-	private immutable int bitsInLastCell = widthInBits % 64; // 32
-	private immutable int shift = 11;
+	private enum int widthInBits = 160;
+	private enum size_t lengthInBytes = (widthInBits - 1) / 8 + 1;
+	private enum size_t lengthInQWords = (widthInBits - 1) / 64 + 1;
+	private enum int bitsInLastCell = widthInBits % 64; // 32
+	private enum int shift = 11;
 
 	private ulong[lengthInQWords] _data;
 	private ulong _lengthSoFar;

@@ -10,14 +10,20 @@ about: Create a report to help us improve
 A clear and concise description of what the bug is.
 
 **Application and Operating System Details:**
-*   OS: Output of `uname -a` & provide your OS & version (CentOS 6.x, Ubuntu 18.x etc)
+*   Provide your OS & version (CentOS 6.x, Ubuntu 18.x etc) and the output of: `uname -a`
 *   Are you using a headless system (no gui) or with a gui installed?
 *   OneDrive Account Type
-*   DMD or LDC compiler version `dmd --version` or `ldmd2 --version`
-*   Application configuration: Output of `onedrive --display-config`
-*   Curl Version: Output of `curl --version`
+*   Did you build from source or install from a package?
+*   If you installed from source, what is your DMD or LDC compiler version: `dmd --version` or `ldmd2 --version`
+*   OneDrive Application Version: Output of `onedrive --version`
+*   OneDrive Application Configuration: Output of `onedrive --display-config`
+*   Provide the version of curl you are using: Output of `curl --version`
+*   Is your configured 'sync_dir' a local directory or a network mount point?
+*   If *not* local, provide all the mountpoints in your system: Output of: `mount`
+*   What partition format type does your configured 'sync_dir' reside on? Output of: `lsblk -f` 
+*   Explain your entire configuration setup - is the OneDrive folder shared with any other system, shared with any other platform at the same time, is the OneDrive account you use shared across multiple systems / platforms / Operating Systems and in use at the same time
 
-**Note:** Please generate a full debug log as per [https://github.com/abraunegg/onedrive/wiki/Generate-debug-log-for-support](https://github.com/abraunegg/onedrive/wiki/Generate-debug-log-for-support) and email to support@mynas.com.au
+**Note:** Please generate a full debug log whilst reproducing the issue as per [https://github.com/abraunegg/onedrive/wiki/Generate-debug-log-for-support](https://github.com/abraunegg/onedrive/wiki/Generate-debug-log-for-support) and email to support@mynas.com.au
 
 **To Reproduce**
 Steps to reproduce the behavior if not causing an application crash:
@@ -49,5 +55,7 @@ Add any other context about the problem here.
 
 ### Bug Report Checklist ###
 *   [] Detailed description
+*   [] Application and Operating System Details provided in full
 *   [] Reproduction steps (if applicable)
-*   [] Verbose Log Output
+*   [] Verbose Log Output from your error
+*   [] Debug Log generated and submitted
