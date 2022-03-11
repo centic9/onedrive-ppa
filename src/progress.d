@@ -24,7 +24,6 @@ class Progress
     size_t getTerminalWidth() {
       size_t column = default_width;
       version (CRuntime_Musl) {
-	  } else version(Android) {
       } else {
 	winsize ws;
 	if(ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) != -1 && ws.ws_col > 0) {
@@ -83,7 +82,7 @@ class Progress
 
       header.formattedWrite("%s %3d%% |", caption, cast(int)(ratio * 100));
 
-      if(counter <= 0 || ratio == 0.0) {
+      if(counter <= 1 || ratio == 0.0) {
         footer.formattedWrite("|   ETA   --:--:--:");
       } else {
         int h, m, s;
@@ -115,7 +114,7 @@ class Progress
     this(size_t iterations) {
       if(iterations <= 0) iterations = 1;
 
-      counter = -1;
+      counter = 0;
       this.iterations = iterations;
       start_time = Clock.currTime.toUnixTime;
     }
@@ -141,7 +140,7 @@ class Progress
     }
 
     void reset() {
-      counter = -1;
+      counter = 0;
       start_time = Clock.currTime.toUnixTime;
     }
 

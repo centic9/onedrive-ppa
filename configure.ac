@@ -9,7 +9,7 @@ dnl - commit the changed files (configure.ac, configure)
 dnl - tag the release
 
 AC_PREREQ([2.69])
-AC_INIT([onedrive],[v2.4.16], [https://github.com/abraunegg/onedrive], [onedrive])
+AC_INIT([onedrive],[v2.3.13], [https://github.com/abraunegg/onedrive], [onedrive])
 AC_CONFIG_SRCDIR([src/main.d])
 
 
@@ -104,7 +104,7 @@ case $(basename $DC) in
 		# remove everthing after ):
 		VERSION=${VERSION%%):*}
 		# now version should be something like L.M.N
-		MINVERSION=1.17.0
+		MINVERSION=1.12.0
 		;;
 	dmd)
 		# DMD64 D Compiler v2.085.1\n...
@@ -112,7 +112,7 @@ case $(basename $DC) in
 		VERSION=${VERSION#*Compiler v}
 		VERSION=${VERSION%% *}
 		# now version should be something like L.M.N
-		MINVERSION=2.087.0
+		MINVERSION=2.083.1
 		;;
 esac
 
@@ -228,7 +228,7 @@ dnl
 dnl Completion support
 dnl First determine whether completions are requested, pass that to Makefile
 AC_ARG_ENABLE([completions],
-	      AS_HELP_STRING([--enable-completions], [Install shell completions for bash, zsh, and fish]))
+  AS_HELP_STRING([--enable-completions], [Install shell completions for bash and zsh]))
 
 AS_IF([test "x$enable_completions" = "xyes"], [enable_completions=yes], [enable_completions=no])
 
@@ -258,16 +258,6 @@ AS_IF([test "x$enable_completions" = "xyes"],[
       with_zsh_completion_dir="/usr/local/share/zsh/site-functions"
     ])
   AC_SUBST([ZSH_COMPLETION_DIR], $with_zsh_completion_dir)
-
-  AC_ARG_WITH([fish-completion-dir],
-	      [AS_HELP_STRING([--with-fish-completion-dir=DIR], [Directory for fish completion files])],,
-              [with_fish_completion_dir=auto])
-  AS_IF([test "x$with_fish_completion_dir" = "xyes" -o "x$with_fish_completion_dir" = "xauto"], 
-    [
-     with_fish_completion_dir="/usr/local/share/fish/completions"
-    ])
-  AC_SUBST([FISH_COMPLETION_DIR], $with_fish_completion_dir)
-
   ])
 
 dnl

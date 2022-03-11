@@ -33,27 +33,19 @@ Check for the presence of .nosync in each directory. If found, skip directory fr
 .br
 Configuration file key: \fBcheck_nosync\fP (default: \fBfalse\fP)
 .TP
-\fB\-\-classify\-as\-big\-delete\fP
-Number of children in a path that is locally removed which will be classified as a 'big data delete'
-.br
-Configuration file key: \fBclassify_as_big_delete\fP (default: \fB1000\fP)
-.TP
 \fB\-\-confdir\fP ARG
 Set the directory used to store the configuration files
 .TP
 \fB\-\-create\-directory\fP ARG
 Create a directory on OneDrive \- no sync will be performed.
 .TP
-\fB\-\-create\-share\-link\fP ARG
-Create a shareable link for an existing file on OneDrive
+\fB\-\-destination\-directory\fP ARG
+Destination directory for renamed or move on OneDrive \- no sync will be performed.
 .TP
 \fB\-\-debug\-https\fP
 Debug OneDrive HTTPS communication.
 .br
 Configuration file key: \fBdebug_https\fP (default: \fBfalse\fP)
-.TP
-\fB\-\-destination\-directory\fP ARG
-Destination directory for renamed or move on OneDrive \- no sync will be performed.
 .TP
 \fB\-\-disable\-notifications\fP
 Do not use desktop notifications in monitor mode
@@ -72,7 +64,7 @@ Display what options the client will use as currently configured \- no sync will
 Display the sync status of the client \- no sync will be performed.
 .TP
 \fB\-\-download\-only\fP
-Replicate the OneDrive online state locally, by only downloading changes from OneDrive. Do not upload local changes to OneDrive.
+Only download remote changes
 .br
 Configuration file key: \fBdownload_only\fP (default: \fBfalse\fP)
 .TP
@@ -86,8 +78,10 @@ Enable client activity to a separate log file
 .br
 Configuration file key: \fBenable_logging\fP (default: \fBfalse\fP)
 .TP
-\fB\-\-force\fP
-Force the deletion of data when a 'big delete' is detected
+\fB\-\-force\-http\-1.1\fP
+Force the use of HTTP 1.1 for all operations (DEPRECIATED)
+.br
+Configuration file key: \fBforce_http_11\fP (default: \fBfalse\fP)
 .TP
 \fB\-\-force\-http\-2\fP
 Force the use of HTTP/2 for all operations where applicable
@@ -99,9 +93,6 @@ Query and return the Office 365 Drive ID for a given Office 365 SharePoint Share
 .TP
 \fB\-\-get\-file\-link\fP ARG
 Display the file link of a synced file
-.TP
-\fB\-\-list\-shared\-folders\fP 
-List OneDrive Business Shared Folders
 .TP
 \fB\-\-local\-first\fP
 Synchronize from the local directory source first, before downloading changes from OneDrive.
@@ -129,27 +120,17 @@ Keep monitoring for local and remote changes
 The number of seconds by which each sync operation is undertaken when
 idle under monitor mode
 .br
-Configuration file key: \fBmonitor_interval\fP (default: \fB300\fP)
+Configuration file key: \fBmonitor_interval\fP (default: \fB45\fP)
 .TP
 \fB\-\-monitor\-fullscan-frequency\fP ARG
 Number of sync runs before performing a full local scan of the synced directory
 .br
 Configuration file key: \fBmonitor_fullscan_frequency\fP (default: \fB10\fP)
 .TP
-\fB\-\-monitor\-log\-frequency\fP ARG
-Frequency of logging in monitor mode
-.br
-Configuration file key: \fBmonitor_log_frequency\fP (default: \fB5\fP)
-.TP
 \fB\-\-no\-remote\-delete\fP
 Do not delete local file 'deletes' from OneDrive when using \fB\-\-upload\-only\fR
 .br
 Configuration file key: \fBno_remote_delete\fP (default: \fBfalse\fP)
-.TP
-\fB\-\-operation\-timeout\fP ARG
-Set the maximum amount of time (seconds) a file operation is allowed to take. This includes DNS resolution, connecting, data transfer, etc.
-.br
-Configuration file key: \fBoperation_timeout\fP (default: \fB3600\fP)
 .TP
 \fB\-\-print\-token\fP
 Print the access token, useful for debugging
@@ -160,21 +141,8 @@ Forget the last saved state, perform a full sync
 \fB\-\-remove\-directory\fP ARG
 Remove a directory on OneDrive \- no sync will be performed.
 .TP
-\fB\-\-remove\-source\-files\fP
-Remove source file after successful transfer to OneDrive when using \-\-upload-only
-.br
-Configuration file key: \fBremove_source_files\fP (default: \fBfalse\fP)
-.TP
 \fB\-\-single\-directory\fP ARG
 Specify a single local directory within the OneDrive root to sync.
-.TP
-\fB\-\-skip\-dir\fP ARG
-Skip any directories that match this pattern from syncing
-.TP
-\fB\-\-skip\-dir\-strict\-match\fP
-When matching skip_dir directories, only match explicit matches
-.br
-Configuration file key: \fBskip_dir_strict_match\fP (default: \fBfalse\fP)
 .TP
 \fB\-\-skip\-dot\-files\fP
 Skip dot files and folders from syncing
@@ -186,9 +154,6 @@ Skip any files that match this pattern from syncing
 .br
 Configuration file key: \fBskip_file\fP (default: \fB~*|.~*|*.tmp\fP)
 .TP
-\fB\-\-skip\-size\fP ARG
-Skip new files larger than this size (in MB)
-.TP
 \fB\-\-skip\-symlinks\fP
 Skip syncing of symlinks
 .br
@@ -199,12 +164,6 @@ Source directory to rename or move on OneDrive \- no sync will be performed.
 .TP
 \fB\-\-sync\-root\-files\fP
 Sync all files in sync_dir root when using sync_list.
-
-.TP
-\fB\-\-sync\-shared\-folders\fP
-Sync OneDrive Business Shared Folders
-.br
-Configuration file key: \fBsync_business_shared_folders\fP (default: \fBfalse\fP)
 .TP
 \fB\-\-syncdir\fP ARG
 Set the directory used to sync the files that are synced
@@ -215,7 +174,7 @@ Configuration file key: \fBsync_dir\fP (default: \fB~/OneDrive\fP)
 Perform a synchronization
 .TP
 \fB\-\-upload\-only\fP
-Replicate the locally configured sync_dir state to OneDrive, by only uploading local changes to OneDrive. Do not download changes from OneDrive.
+Only upload to OneDrive, do not sync changes from OneDrive locally
 .br
 Configuration file key: \fBupload_only\fP (default: \fBfalse\fP)
 .TP
@@ -241,23 +200,13 @@ State caching
 
 Real-Time file monitoring with Inotify
 
-File upload / download validation to ensure data integrity
-
 Resumable uploads
 
 Support OneDrive for Business (part of Office 365)
 
-Shared Folder support for OneDrive Personal and OneDrive Business accounts
+Shared folders (OneDrive Personal)
 
-SharePoint / Office365 Shared Libraries
-
-Desktop notifications via libnotify
-
-Dry-run capability to test configuration changes
-
-Prevent major OneDrive accidental data deletion after configuration change
-
-Support for National cloud deployments (Microsoft Cloud for US Government, Microsoft Cloud Germany, Azure and Office 365 operated by 21Vianet in China)
+SharePoint / Office 365 Group Drives (refer to README.Office365.md to configure)
 
 
 .SH CONFIGURATION
@@ -349,8 +298,4 @@ for a user via the \fBonedrive@<username>\fP service.
 
 Further examples and documentation is available in
 \f[C]README.md\f[]
-\f[C]docs/USAGE.md\f[]
-\f[C]docs/advanced-usage.md\f[]
-\f[C]docs/BusinessSharedFolders.md\f[]
-\f[C]docs/SharePoint-Shared-Libraries.md\f[]
-\f[C]docs/national-cloud-deployments.md\f[]
+\f[C]README.Office365.md\f[]

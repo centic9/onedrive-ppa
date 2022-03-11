@@ -1,75 +1,82 @@
-# Installing or Upgrading using Distribution Packages or Building the OneDrive Client for Linux from source
+# Building and Installing the OneDrive Free Client
 
-## Installing or Upgrading using Distribution Packages
-This project has been packaged for the following Linux distributions as per below. The current client release is: [![Version](https://img.shields.io/github/v/release/abraunegg/onedrive)](https://github.com/abraunegg/onedrive/releases)
+## Linux Packages
+This project has been packaged for the following Linux distributions:
 
-Only the current release version or greater is supported. Earlier versions are not supported and should not be installed or used. 
+* Fedora, simply install with `sudo dnf install onedrive`
+* Arch Linux, available from AUR as [onedrive-abraunegg](https://aur.archlinux.org/packages/onedrive-abraunegg/)
 
-#### Important Note:
-Distribution packages may be of an older release when compared to the latest release that is [available](https://github.com/abraunegg/onedrive/releases). If any package version indicator below is ![#f03c15](https://via.placeholder.com/15/f03c15/000000?text=+) for your distribution, it is recommended that you build from source. Do not install the software from the available distribution package. If a package is out of date, please contact the package maintainer for resolution.
+**Important:** Distribution packages may be of an older release when compared to the latest release that is [available](https://github.com/abraunegg/onedrive/releases). If a package is out out date, please contact the package maintainer for resolution.
 
-| Distribution                    | Package Name & Package Link                                                  | &nbsp;&nbsp;PKG_Version&nbsp;&nbsp; | &nbsp;i686&nbsp; | x86_64 | ARMHF | AARCH64 | Extra Details                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
-|---------------------------------|------------------------------------------------------------------------------|:---------------:|:----:|:------:|:-----:|:-------:|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Alpine Linux                    | [onedrive](https://pkgs.alpinelinux.org/packages?name=onedrive&branch=edge)  |<a href="https://pkgs.alpinelinux.org/packages?name=onedrive&branch=edge"><img src="https://repology.org/badge/version-for-repo/alpine_edge/onedrive.svg?header=" alt="Alpine Linux Edge package" width="46" height="20"></a>|❌|✔|❌|✔ | |
-| Arch Linux<br><br>Manjaro Linux | [onedrive-abraunegg](https://aur.archlinux.org/packages/onedrive-abraunegg/) |<a href="https://aur.archlinux.org/packages/onedrive-abraunegg"><img src="https://repology.org/badge/version-for-repo/aur/onedrive-abraunegg.svg?header=" alt="AUR package" width="46" height="20"></a>|✔|✔|✔|✔ | Install via: `pamac build onedrive-abraunegg` from the Arch Linux User Repository (AUR)<br><br>**Note:** If asked regarding a provider for 'd-runtime' and 'd-compiler', select 'liblphobos' and 'ldc'<br><br>**Note:** System must have at least 1GB of memory & 1GB swap space
-| Debian                          | [onedrive](https://packages.debian.org/search?keywords=onedrive)             |<a href="https://packages.debian.org/search?keywords=onedrive"><img src="https://repology.org/badge/version-for-repo/debian_11/onedrive.svg?header=" alt="Debian package" width="46" height="20"></a>|✔|✔|✔|✔| It is recommended that for Debian that you install from OpenSuSE Build Service using the Debian Package Install [Instructions](ubuntu-package-install.md) |
-| Fedora                          | [onedrive](https://koji.fedoraproject.org/koji/packageinfo?packageID=26044)  |<a href="https://koji.fedoraproject.org/koji/packageinfo?packageID=26044"><img src="https://repology.org/badge/version-for-repo/fedora_rawhide/onedrive.svg?header=" alt="Fedora Rawhide package" width="46" height="20"></a>|✔|✔|✔|✔| |
-| Gentoo                          | [onedrive](https://gpo.zugaina.org/net-misc/onedrive)                        | No API Available |✔|✔|❌|❌| |
-| NixOS                           | [onedrive](https://search.nixos.org/packages?channel=20.09&from=0&size=50&sort=relevance&query=onedrive)|<a href="https://search.nixos.org/packages?channel=20.09&from=0&size=50&sort=relevance&query=onedrive"><img src="https://repology.org/badge/version-for-repo/nix_unstable/onedrive.svg?header=" alt="nixpkgs unstable package" width="46" height="20"></a>|❌|✔|❌|❌| Use package `onedrive` either by adding it to `configuration.nix` or by using the command `nix-env -iA <channel name>.onedrive`. This does not install a service. To install a service, use unstable channel (will stabilize in 20.09) and add `services.onedrive.enable=true` in `configuration.nix`. You can also add a custom package using the `services.onedrive.package` option (recommended since package lags upstream). Enabling the service installs a default package too (based on the channel). You can also add multiple onedrive accounts trivially, see [documentation](https://github.com/NixOS/nixpkgs/pull/77734#issuecomment-575874225). |
-| OpenSuSE                        | [onedrive](https://software.opensuse.org/package/onedrive)                   |<a href="https://software.opensuse.org/package/onedrive"><img src="https://repology.org/badge/version-for-repo/opensuse_tumbleweed/onedrive.svg?header=" alt="openSUSE Tumbleweed package" width="46" height="20"></a>|✔|✔|❌|❌| |
-| OpenSuSE Build Service          | [onedrive](https://build.opensuse.org/package/show/home:npreining:debian-ubuntu-onedrive/onedrive) | No API Available |✔|✔|✔|✔| Package Build Service for Debian and Ubuntu | 
-| Raspbian                        | [onedrive](https://archive.raspbian.org/raspbian/pool/main/o/onedrive/)      |<a href="https://archive.raspbian.org/raspbian/pool/main/o/onedrive/"><img src="https://repology.org/badge/version-for-repo/raspbian_stable/onedrive.svg?header=" alt="Raspbian Stable package" width="46" height="20"></a> |❌|❌|✔|❌| **Note:** You must compile from source for Raspbian |
-| Slackware                       | [onedrive](https://slackbuilds.org/repository/14.2/network/onedrive/)        |<a href="https://slackbuilds.org/repository/14.2/network/onedrive/"><img src="https://repology.org/badge/version-for-repo/slackbuilds/onedrive.svg?header=" alt="SlackBuilds package" width="46" height="20"></a>|✔|✔|❌|❌| |
-| Solus                           | [onedrive](https://dev.getsol.us/search/query/FB7PIf1jG9Z9/#R)               |<a href="https://dev.getsol.us/search/query/FB7PIf1jG9Z9/#R"><img src="https://repology.org/badge/version-for-repo/solus/onedrive.svg?header=" alt="Solus package" width="46" height="20"></a>|✔|✔|❌|❌| |
-| Ubuntu 18.04                    | [onedrive](https://packages.ubuntu.com/bionic/onedrive)                      |<a href="https://packages.ubuntu.com/bionic/onedrive"><img src="https://repology.org/badge/version-for-repo/ubuntu_18_04/onedrive.svg?header=" alt="Ubuntu 18.04 package" width="88" height="20"></a> |✔|✔|✔|❌| **Note:** Do not install from Ubuntu Universe<br><br>You must compile from source for this version of Ubuntu |
-| Ubuntu 20.04                    | [onedrive](https://packages.ubuntu.com/focal/onedrive)                       |<a href="https://packages.ubuntu.com/focal/onedrive"><img src="https://repology.org/badge/version-for-repo/ubuntu_20_04/onedrive.svg?header=" alt="Ubuntu 20.04 package" width="46" height="20"></a> |❌|✔|✔|✔| **Note:** Do not install from Ubuntu Universe<br><br>Install from OpenSuSE Build Service using the Ubuntu Package Install [Instructions](ubuntu-package-install.md) |
-| Ubuntu 21.04                    | [onedrive](https://packages.ubuntu.com/hirsute/onedrive)                     |<a href="https://packages.ubuntu.com/hirsute/onedrive"><img src="https://repology.org/badge/version-for-repo/ubuntu_21_04/onedrive.svg?header=" alt="Ubuntu 21.04 package" width="46" height="20"></a> |❌|✔|✔|✔| **Note:** Do not install from Ubuntu Universe<br><br>Install from OpenSuSE Build Service using the Ubuntu Package Install [Instructions](ubuntu-package-install.md) |
-| Ubuntu 21.10                    | [onedrive](https://packages.ubuntu.com/impish/onedrive)                      |<a href="https://packages.ubuntu.com/impish/onedrive"><img src="https://repology.org/badge/version-for-repo/ubuntu_21_10/onedrive.svg?header=" alt="Ubuntu 21.10 package" width="46" height="20"></a> |❌|✔|✔|✔| **Note:** Do not install from Ubuntu Universe<br><br>Install from OpenSuSE Build Service using the Ubuntu Package Install [Instructions](ubuntu-package-install.md) |
-| Ubuntu 22.04                    | [onedrive](https://packages.ubuntu.com/jammy/onedrive)                       |<a href="https://packages.ubuntu.com/jammy/onedrive"><img src="https://repology.org/badge/version-for-repo/ubuntu_22_04/onedrive.svg?header=" alt="Ubuntu 22.04 package" width="46" height="20"></a> |❌|✔|✔|✔| **Note:** Do not install from Ubuntu Universe<br><br>Install from OpenSuSE Build Service using the Ubuntu Package Install [Instructions](ubuntu-package-install.md) |
-| Void Linux                      | [onedrive](https://voidlinux.org/packages/?arch=x86_64&q=onedrive)           |<a href="https://voidlinux.org/packages/?arch=x86_64&q=onedrive"><img src="https://repology.org/badge/version-for-repo/void_x86_64/onedrive.svg?header=" alt="Void Linux x86_64 package" width="46" height="20"></a>|✔|✔|❌|❌| |
-
-#### Important information for all Ubuntu and Ubuntu based distribution users:
-This information is specifically for the following platforms and distributions:
-*   Ubuntu
-*   Lubuntu
-*   Linux Mint
-*   POP OS
-*   Peppermint OS
-
-Whilst there are [onedrive](https://packages.ubuntu.com/search?keywords=onedrive&searchon=names&suite=all&section=all) Universe packages available for Ubuntu, do not install 'onedrive' from these Universe packages. The default Universe packages are out-of-date and are not supported and should not be used. If you wish to use a package, it is highly recommended that you utilise the [OpenSuSE Build Service](https://build.opensuse.org/project/show/home:npreining:debian-ubuntu-onedrive) to install packages for these platforms. If the OpenSuSE Build Service does not cater for your version, your only option is to build from source.
-
-If you wish to change this situation so that you can just use the Universe packages via 'apt install onedrive', consider becoming the Ubuntu package maintainer and contribute back to your community.
-
-## Building from Source - High Level Requirements
+## Build Requirements
 *   Build environment must have at least 1GB of memory & 1GB swap space
-*   Install the required distribution package dependencies
 *   [libcurl](http://curl.haxx.se/libcurl/)
 *   [SQLite 3](https://www.sqlite.org/) >= 3.7.15
-*   [Digital Mars D Compiler (DMD)](http://dlang.org/download.html) or [LDC – the LLVM-based D Compiler](https://github.com/ldc-developers/ldc)
+*   [Digital Mars D Compiler (DMD)](http://dlang.org/download.html)
 
-**Note:** DMD version >= 2.087.0 or LDC version >= 1.17.0 is required to compile this application
+**Note:** DMD version >= 2.083.1 or LDC version >= 1.12.0 is required to compile this application
 
-### Example for installing DMD Compiler
+### Dependencies: Ubuntu 16.x - i386 / i686 (less than 1GB Memory) 
+**Important:** Build environment must have at least 512 of memory & 1GB swap space
+
+**Important:** Only use this method if you have <1GB of physical memory.
+
+**Note:** Peppermint 7 validated with the DMD compiler on the following i386 / i686 platform:
+```text
+DISTRIB_ID=Peppermint
+DISTRIB_RELEASE=7
+DISTRIB_CODENAME=xenial
+DISTRIB_DESCRIPTION="Peppermint 7 Seven"
+```
+
+First install development dependencies as per below:
+```text
+sudo apt install build-essential
+sudo apt install libcurl4-openssl-dev
+sudo apt install libsqlite3-dev
+sudo apt install pkg-config
+sudo apt install git
+sudo apt install curl
+```
+For notifications the following is also necessary:
+```text
+sudo apt install libnotify-dev
+```
+Second, install the DMD compiler as per below:
+```text
+sudo wget http://master.dl.sourceforge.net/project/d-apt/files/d-apt.list -O /etc/apt/sources.list.d/d-apt.list
+sudo apt-get update && sudo apt-get -y --allow-unauthenticated install --reinstall d-apt-keyring
+sudo apt-get update && sudo apt-get install dmd-compiler dub
+```
+
+### Dependencies: Ubuntu 16.x - i386 / i686 (1GB Memory)
+**Note:** Ubuntu 16.x validated with the DMD compiler on the following Ubuntu i386 / i686 platform:
+```text
+DISTRIB_ID=Ubuntu
+DISTRIB_RELEASE=16.04
+DISTRIB_CODENAME=xenial
+DISTRIB_DESCRIPTION="Ubuntu 16.04.6 LTS"
+```
+
+First install development dependencies as per below:
+```text
+sudo apt install build-essential
+sudo apt install libcurl4-openssl-dev
+sudo apt install libsqlite3-dev
+sudo apt install pkg-config
+sudo apt install git
+sudo apt install curl
+```
+For notifications the following is also necessary:
+```text
+sudo apt install libnotify-dev
+```
+Second, install the DMD compiler as per below:
 ```text
 curl -fsS https://dlang.org/install.sh | bash -s dmd
 ```
 
-### Example for installing LDC Compiler
-```text
-curl -fsS https://dlang.org/install.sh | bash -s ldc
-```
-
-## Distribution Package Dependencies
-### Dependencies: Ubuntu 16.x
-Ubuntu Linux 16.04 LTS reached the end of its five-year LTS window on April 30th 2021 and is no longer supported.
-
-### Dependencies: Ubuntu 18.x / Lubuntu 18.x / Debian 9 - i386 / i686
-These dependencies are also applicable for all Ubuntu based distributions such as:
-*   Lubuntu
-*   Linux Mint
-*   POP OS
-*   Peppermint OS
-
+### Dependencies: Ubuntu 18.x / Lubuntu 18.x / Debian 9 - i386 / i686 
 **Important:** The DMD compiler cannot be used in its default configuration on Ubuntu 18.x / Lubuntu 18.x / Debian 9 i386 / i686 architectures due to an issue in the Ubuntu / Debian linking process. See [https://issues.dlang.org/show_bug.cgi?id=19116](https://issues.dlang.org/show_bug.cgi?id=19116) for further details.
 
 **Note:** Ubuntu 18.x validated with the DMD compiler on the following Ubuntu i386 / i686 platform:
@@ -115,12 +122,7 @@ sudo update-alternatives --install "/usr/bin/ld" "ld" "/usr/bin/ld.gold" 20
 sudo update-alternatives --install "/usr/bin/ld" "ld" "/usr/bin/ld.bfd" 10
 ```
 
-### Dependencies: Ubuntu 18.x, Ubuntu 19.x, Ubuntu 20.x / Debian 9, Debian 10 - x86_64
-These dependencies are also applicable for all Ubuntu based distributions such as:
-*   Lubuntu
-*   Linux Mint
-*   POP OS
-*   Peppermint OS
+### Dependencies: Ubuntu 18.x, Ubuntu 19.x / Debian 9, Debian 10 - x86_64
 ```text
 sudo apt install build-essential
 sudo apt install libcurl4-openssl-dev
@@ -136,7 +138,25 @@ sudo apt install libnotify-dev
 ```
 
 ### Dependencies: CentOS 6.x / RHEL 6.x
-CentOS 6.x and RHEL 6.x reached End of Life status on November 30th 2020 and is no longer supported.
+```text
+sudo yum groupinstall 'Development Tools'
+sudo yum install libcurl-devel
+sudo yum install sqlite-devel
+curl -fsS https://dlang.org/install.sh | bash -s dmd
+```
+For notifications the following is also necessary:
+```text
+sudo yum install libnotify-devel
+```
+In addition to the above requirements, the `sqlite` version used on CentOS 6.x / RHEL 6.x needs to be upgraded. Use the following instructions to update your version of `sqlite` so that it can support this client:
+```text
+sudo yum -y update
+sudo yum -y install epel-release wget
+sudo yum -y install mock
+wget https://kojipkgs.fedoraproject.org//packages/sqlite/3.7.15.2/2.fc19/src/sqlite-3.7.15.2-2.fc19.src.rpm
+mock --rebuild sqlite-3.7.15.2-2.fc19.src.rpm
+sudo yum -y upgrade /var/lib/mock/epel-6-`arch`/result/sqlite-*
+```
 
 ### Dependencies: Fedora < Version 18 / CentOS 7.x / RHEL 7.x
 ```text
@@ -162,9 +182,9 @@ For notifications the following is also necessary:
 sudo dnf install libnotify-devel
 ```
 
-### Dependencies: Arch Linux & Manjaro Linux
+### Dependencies: Arch Linux
 ```text
-sudo pacman -S make pkg-config curl sqlite ldc
+sudo pacman -S curl sqlite dmd
 ```
 For notifications the following is also necessary:
 ```text
@@ -172,42 +192,27 @@ sudo pacman -S libnotify
 ```
 
 ### Dependencies: Raspbian (ARMHF)
-Validated using:
-*   `Linux raspberrypi 5.4.79-v7+ #1373 SMP Mon Nov 23 13:22:33 GMT 2020 armv7l GNU/Linux` (2020-12-02-raspios-buster-armhf) using Raspberry Pi 2 Model B
-*   `Linux raspberrypi 5.4.83-v8+ #1379 SMP PREEMPT Mon Dec 14 13:15:14 GMT 2020 aarch64` (2021-01-11-raspios-buster-armhf) using Raspberry Pi 3 Model B+
-
-**Note:** Build environment must have at least 1GB of memory & 1GB swap space. Check with `swapon`.
-
 ```text
-sudo apt install build-essential
-sudo apt install libcurl4-openssl-dev
-sudo apt install libsqlite3-dev
-sudo apt install pkg-config
-sudo apt install git
-sudo apt install curl
-wget https://github.com/ldc-developers/ldc/releases/download/v1.17.0/ldc2-1.17.0-linux-armhf.tar.xz
-tar -xvf ldc2-1.17.0-linux-armhf.tar.xz
+sudo apt-get install libcurl4-openssl-dev
+sudo apt-get install libsqlite3-dev
+sudo apt-get install libxml2
+sudo apt-get install pkg-config
+wget https://github.com/ldc-developers/ldc/releases/download/v1.16.0/ldc2-1.16.0-linux-armhf.tar.xz
+tar -xvf ldc2-1.16.0-linux-armhf.tar.xz
 ```
 For notifications the following is also necessary:
 ```text
 sudo apt install libnotify-dev
 ```
 
-### Dependencies: Ubuntu 20.x / Debian 10 (ARM64)
-Validated using:
-*   `Ubuntu 20.04.2 LTS (GNU/Linux 5.4.0-1028-raspi aarch64)` (ubuntu-20.04.2-preinstalled-server-arm64+raspi) using Raspberry Pi 3 Model B+
-
-**Note:** Build environment must have at least 1GB of memory & 1GB swap space. Check with `swapon`.
-
+### Dependencies: Debian (ARM64)
 ```text
-sudo apt install build-essential
-sudo apt install libcurl4-openssl-dev
-sudo apt install libsqlite3-dev
-sudo apt install pkg-config
-sudo apt install git
-sudo apt install curl
-wget https://github.com/ldc-developers/ldc/releases/download/v1.25.1/ldc2-1.25.1-linux-aarch64.tar.xz
-tar -xvf ldc2-1.25.1-linux-aarch64.tar.xz
+sudo apt-get install libcurl4-openssl-dev
+sudo apt-get install libsqlite3-dev
+sudo apt-get install libxml2
+sudo apt-get install pkg-config
+wget https://github.com/ldc-developers/ldc/releases/download/v1.16.0/ldc2-1.16.0-linux-aarch64.tar.xz
+tar -xvf ldc2-1.16.0-linux-aarch64.tar.xz
 ```
 For notifications the following is also necessary:
 ```text
@@ -228,30 +233,8 @@ sudo emerge x11-libs/libnotify
 
 ### Dependencies: OpenSuSE Leap 15.0
 ```text
-sudo zypper addrepo https://download.opensuse.org/repositories/devel:languages:D/openSUSE_Leap_15.0/devel:languages:D.repo
-sudo zypper refresh
-sudo zypper install gcc git libcurl-devel sqlite3-devel dmd phobos-devel phobos-devel-static
-```
-For notifications the following is also necessary:
-```text
-sudo zypper install libnotify-devel
-```
-
-### Dependencies: OpenSuSE Leap 15.1
-```text
-sudo zypper addrepo https://download.opensuse.org/repositories/devel:languages:D/openSUSE_Leap_15.1/devel:languages:D.repo
-sudo zypper refresh
-sudo zypper install gcc git libcurl-devel sqlite3-devel dmd phobos-devel phobos-devel-static
-```
-For notifications the following is also necessary:
-```text
-sudo zypper install libnotify-devel
-```
-
-### Dependencies: OpenSuSE Leap 15.2
-```text
-sudo zypper refresh
-sudo zypper install gcc git libcurl-devel sqlite3-devel dmd phobos-devel phobos-devel-static
+sudo zypper addrepo --check --refresh --name "D" http://download.opensuse.org/repositories/devel:/languages:/D/openSUSE_Leap_15.0/devel:languages:D.repo
+sudo zypper install git libcurl-devel sqlite3-devel D:dmd D:libphobos2-0_81 D:phobos-devel D:phobos-devel-static
 ```
 For notifications the following is also necessary:
 ```text
@@ -259,22 +242,16 @@ sudo zypper install libnotify-devel
 ```
 
 ## Compilation & Installation
-### High Level Steps
-1.  Install the platform dependancies for your Linux OS
-2.  Activate your DMD or LDC compiler
-3.  Clone the GitHub repository, run configure and make, then install
-4.  Deactivate your DMD or LDC compiler
-
 ### Building using DMD Reference Compiler
 Before cloning and compiling, if you have installed DMD via curl for your OS, you will need to activate DMD as per example below:
 ```text
-Run `source ~/dlang/dmd-2.087.0/activate` in your shell to use dmd-2.087.0.
+Run `source ~/dlang/dmd-2.081.1/activate` in your shell to use dmd-2.081.1.
 This will setup PATH, LIBRARY_PATH, LD_LIBRARY_PATH, DMD, DC, and PS1.
 Run `deactivate` later on to restore your environment.
 ```
 Without performing this step, the compilation process will fail.
 
-**Note:** Depending on your DMD version, substitute `2.087.0` above with your DMD version that is installed.
+**Note:** Depending on your DMD version, substitute `2.081.1` above with your DMD version that is installed.
 
 ```text
 git clone https://github.com/abraunegg/onedrive.git
@@ -298,54 +275,39 @@ By passing `--enable-debug` to the `configure` call, `onedrive` gets built with 
 information, useful (for example) to get `perf`-issued figures.
 
 By passing `--enable-completions` to the `configure` call, shell completion functions are
-installed for `bash`, `zsh` and `fish`. The installation directories are determined
+installed for `bash` and `zsh`. The installation directories are determined
 as far as possible automatically, but can be overridden by passing
-`--with-bash-completion-dir=<DIR>`, `--with-zsh-completion-dir=<DIR>`, and
-`--with-fish-completion-dir=<DIR>` to `configure`.
+`--with-bash-completion-dir=<DIR>` and 
+`--with-zsh-completion-dir=<DIR>` to `configure`.
 
 ### Building using a different compiler (for example [LDC](https://wiki.dlang.org/LDC))
-#### ARMHF Architecture (Raspbian etc)
-**Note:** Build environment must have at least 1GB of memory & 1GB swap space. Check with `swapon`.
+#### ARMHF Architecture
 ```text
 git clone https://github.com/abraunegg/onedrive.git
 cd onedrive
-./configure DC=~/ldc2-1.17.0-linux-armhf/bin/ldmd2
+./configure DC=~/ldc2-1.16.0-linux-armhf/bin/ldmd2
 make clean; make
 sudo make install
 ```
 
 #### ARM64 Architecture
-**Note:** Build environment must have at least 1GB of memory & 1GB swap space. Check with `swapon`
 ```text
 git clone https://github.com/abraunegg/onedrive.git
 cd onedrive
-./configure DC=~/ldc2-1.25.1-linux-aarch64/bin/ldmd2
+./configure DC=~/ldc2-1.16.0-linux-aarch64/bin/ldmd2
 make clean; make
 sudo make install
 ```
 
-## Uninstalling the client
-From within your GitHub repository clone, perform the following to remove the 'onedrive' binary:
+## Uninstall
 ```text
 sudo make uninstall
-```
-
-If you are not upgrading your client, to remove your application state and configuration, perform the following additional step:
-```
+# delete the application state
 rm -rf ~/.config/onedrive
 ```
-**Note:** If you are using the `--confdir option`, substitute `~/.config/onedrive` above for that directory.
+If you are using the `--confdir option`, substitute `~/.config/onedrive` above for that directory.
 
 If you want to just delete the application key, but keep the items database:
 ```text
 rm -f ~/.config/onedrive/refresh_token
 ```
-
-## Upgrading the client
-If you have installed the client from a distribution package, the client will be updated when the distribution package is updated by the package maintainer and will be updated to the new application version when you perform your package update.
-
-If you have built the client from source, to upgrade your client, you must first uninstall your existing 'onedrive' binary (see above), then re-install the client by re-cloning, re-compiling and re-installing the client again to install the new version.
-
-To confirm you have the new version installed, use `onedrive --version` to determine the version that is now installed.
-
-
