@@ -9,7 +9,7 @@ Additionally, if you are using a 'config' file within your configuration directo
 
 **Invalid configuration:**
 ```text
-skip_file = "= .*|~*"
+skip_file = ".*|~*"
 ```
 **Minimum valid configuration:**
 ```text
@@ -22,13 +22,17 @@ skip_file = "~*|.~*|*.tmp"
 
 Do not use a skip_file entry of `.*` as this will prevent correct searching of local changes to process.
 
-### Important - curl compatibility
+### Local File and Folder Naming Conventions
+The files and directories in the synchronization directory must follow the [Windows naming conventions](https://msdn.microsoft.com/en-us/library/aa365247).
+The application will attempt to handle instances where you have two files with the same names but with different capitalization. Where there is a namespace clash, the file name which clashes will not be synced. This is expected behavior and won't be fixed.
+
+### curl compatibility
 If your system utilises curl >= 7.62.0 curl defaults to prefer HTTP/2 over HTTP/1.1 by default. If you wish to use HTTP/2 for some operations you will need to use the `--force-http-2` config option to enable otherwise all operations will use HTTP/1.1.
 
-### First run :zap:
-After installing the application you must run it at least once from the terminal to authorize it.
+### Authorize the application with your OneDrive Account
+After installing the application you must authorize the application with your OneDrive Account. This is done by running the application without any additional command switches.
 
-You will be asked to open a specific link using your web browser where you will have to login into your Microsoft Account and give the application the permission to access your files. After giving the permission, you will be redirected to a blank page. Copy the URI of the blank page into the application.
+You will be asked to open a specific URL by using your web browser where you will have to login into your Microsoft Account and give the application the permission to access your files. After giving permission to the application, you will be redirected to a blank page. Copy the URI of the blank page into the application.
 ```text
 [user@hostname ~]$ onedrive 
 
@@ -40,6 +44,20 @@ Enter the response uri:
 
 ```
 
+**Example:**
+```
+[user@hostname ~]$ onedrive 
+Authorize this app visiting:
+
+https://login.microsoftonline.com/common/oauth2/v2.0/authorize?client_id=22c49a0d-d21c-4792-aed1-8f163c982546&scope=Files.ReadWrite%20Files.ReadWrite.all%20Sites.ReadWrite.All%20offline_access&response_type=code&redirect_uri=https://login.microsoftonline.com/common/oauth2/nativeclient
+
+Enter the response uri: https://login.microsoftonline.com/common/oauth2/nativeclient?code=<redacted>
+
+Application has been successfully authorised, however no additional command switches were provided.
+
+Please use --help for further assistance in regards to running this application.
+```
+
 ### Show your configuration
 To validate your configuration the application will use, utilize the following:
 ```text
@@ -47,17 +65,21 @@ onedrive --display-config
 ```
 This will display all the pertinent runtime interpretation of the options and configuration you are using. This is helpful to validate the client will perform the operations your asking without performing a sync. Example output is as follows:
 ```text
-Config path                         = /home/alex/.config/onedrive
-Config file found in config path    = false
-Config option 'sync_dir'            = /home/alex/OneDrive
-Config option 'skip_dir'            = 
-Config option 'skip_file'           = ~*|.~*|*.tmp
-Config option 'skip_dotfiles'       = false
-Config option 'skip_symlinks'       = false
-Config option 'monitor_interval'    = 45
-Config option 'min_notify_changes'   = 5
-Config option 'log_dir'             = /var/log/onedrive/
-Selective sync configured           = false
+onedrive version                       = vX.Y.Z-A-bcdefghi
+Config path                            = /home/alex/.config/onedrive
+Config file found in config path       = false
+Config option 'check_nosync'           = false
+Config option 'sync_dir'               = /home/alex/OneDrive
+Config option 'skip_dir'               = 
+Config option 'skip_file'              = ~*|.~*|*.tmp
+Config option 'skip_dotfiles'          = false
+Config option 'skip_symlinks'          = false
+Config option 'monitor_interval'       = 45
+Config option 'min_notify_changes'     = 5
+Config option 'log_dir'                = /var/log/onedrive/
+Config option 'classify_as_big_delete' = 1000
+Config option 'sync_root_files'        = false
+Selective sync configured              = false
 ```
 
 ### Testing your configuration
@@ -212,7 +234,7 @@ The application will now sync with OneDrive with the new credentials.
 
 ## Configuration
 
-Configuration is determined by three layer: the default values, values set in the configuration file, and values passed in via the command line. The default values provide a reasonable default, and configuration is optionally.
+Configuration is determined by three layers: the default values, values set in the configuration file, and values passed in via the command line. The default values provide a reasonable default, and configuration is optional.
 
 Most command line options have a respective configuration file setting.
 
@@ -224,32 +246,103 @@ nano ~/.config/onedrive/config
 ```
 This file does not get created by default, and should only be created if you want to change the 'default' operational parameters.
 
-See the [config](config) file for the full list of options, and below under "All available commands" for all possible keys and there default values.
+See the [config](config) file for the full list of options, and [All available commands](https://github.com/abraunegg/onedrive/blob/master/docs/USAGE.md#all-available-commands) for all possible keys and there default values.
 
-Comments regarding some of the options:
+The default configuration file is listed below:
+```text
+# Configuration for OneDrive Linux Client
+# This file contains the list of supported configuration fields
+# with their default values.
+# All values need to be enclosed in quotes
+# When changing a config option below, remove the '#' from the start of the line
+# For explanations of all config options below see docs/USAGE.md or the man page.
+#
+# sync_dir = "~/OneDrive"
+# skip_file = "~*|.~*|*.tmp"
+# monitor_interval = "45"
+# skip_dir = ""
+# log_dir = "/var/log/onedrive/"
+# drive_id = ""
+# upload_only = "false"
+# check_nomount = "false"
+# check_nosync = "false"
+# download_only = "false"
+# disable_notifications = "false"
+# disable_upload_validation = "false"
+# enable_logging = "false"
+# force_http_11 = "false"
+# force_http_2 = "false"
+# local_first = "false"
+# no_remote_delete = "false"
+# skip_symlinks = "false"
+# debug_https = "false"
+# skip_dotfiles = "false"
+# dry_run = "false"
+# min_notify_changes = "5"
+# monitor_log_frequency = "5"
+# monitor_fullscan_frequency = "10"
+# sync_root_files = "false"
+# classify_as_big_delete = "1000"
+# user_agent = ""
+# remove_source_files = "false"
+# skip_dir_strict_match = "false"
+# application_id = ""
+```
 
-### sync_dir
-Example: `sync_dir="~/MyDirToSync"`
 
+
+### 'config' file configuration examples:
+The below are 'config' file examples to assist with configuration of the 'config' file:
+
+#### sync_dir
+Example:
+```text
+# When changing a config option below, remove the '#' from the start of the line
+# For explanations of all config options below see docs/USAGE.md or the man page.
+#
+sync_dir="~/MyDirToSync"
+# skip_file = "~*|.~*|*.tmp"
+# monitor_interval = "45"
+# skip_dir = ""
+# log_dir = "/var/log/onedrive/"
+```
 **Please Note:**
-Proceed with caution here when changing the default sync dir from ~/OneDrive to ~/MyDirToSync
+Proceed with caution here when changing the default sync dir from `~/OneDrive` to `~/MyDirToSync`
 
 The issue here is around how the client stores the sync_dir path in the database. If the config file is missing, or you don't use the `--syncdir` parameter - what will happen is the client will default back to `~/OneDrive` and 'think' that either all your data has been deleted - thus delete the content on OneDrive, or will start downloading all data from OneDrive into the default location.
 
 **Note:** After changing `sync_dir`, you must perform a full re-synchronization by adding `--resync` to your existing command line - for example: `onedrive --synchronize --resync`
 
-### skip_dir
-Example: `skip_dir = "Desktop|Documents/IISExpress|Documents/SQL Server Management Studio|Documents/Visual Studio*|Documents/WindowsPowerShell"`
-
+#### skip_dir
+Example: 
+```text
+# When changing a config option below, remove the '#' from the start of the line
+# For explanations of all config options below see docs/USAGE.md or the man page.
+#
+# sync_dir = "~/OneDrive"
+# skip_file = "~*|.~*|*.tmp"
+# monitor_interval = "45"
+skip_dir = "Desktop|Documents/IISExpress|Documents/SQL Server Management Studio|Documents/Visual Studio*|Documents/WindowsPowerShell"
+# log_dir = "/var/log/onedrive/"
+```
 Patterns are case insensitive. `*` and `?` [wildcards characters](https://technet.microsoft.com/en-us/library/bb490639.aspx) are supported. Use `|` to separate multiple patterns.
+
+**Important:** Entries under `skip_dir` are relative to your `sync_dir` path.
 
 **Note:** After changing `skip_dir`, you must perform a full re-synchronization by adding `--resync` to your existing command line - for example: `onedrive --synchronize --resync`
 
-**Note:** Entries under `skip_dir` are relative to your `sync_dir` path.
-
-### skip_file
-Example: `skip_file = "~*|Documents/OneNote*|Documents/config.xlaunch|myfile.ext"`
-
+#### skip_file
+Example:
+```text
+# When changing a config option below, remove the '#' from the start of the line
+# For explanations of all config options below see docs/USAGE.md or the man page.
+#
+# sync_dir = "~/OneDrive"
+skip_file = "~*|Documents/OneNote*|Documents/config.xlaunch|myfile.ext"
+# monitor_interval = "45"
+# skip_dir = ""
+# log_dir = "/var/log/onedrive/"
+```
 Patterns are case insensitive. `*` and `?` [wildcards characters](https://technet.microsoft.com/en-us/library/bb490639.aspx) are supported. Use `|` to separate multiple patterns.
 
 Files can be skipped in the following fashion:
@@ -262,31 +355,55 @@ By default, the following files will be skipped:
 *   Files that start with .~ (like .~lock.* files generated by LibreOffice)
 *   Files that end in .tmp
 
+**Important:** Do not use a skip_file entry of `.*` as this will prevent correct searching of local changes to process.
+
 **Note:** after changing `skip_file`, you must perform a full re-synchronization by adding `--resync` to your existing command line - for example: `onedrive --synchronize --resync`
 
-**Note:** Do not use a skip_file entry of `.*` as this will prevent correct searching of local changes to process.
-
-### skip_dotfiles
-Example: `skip_dotfiles = "true"`
-
+#### skip_dotfiles
+Example: 
+```text
+# skip_symlinks = "false"
+# debug_https = "false"
+skip_dotfiles = "true"
+# dry_run = "false"
+# monitor_interval = "45"
+```
 Setting this to `"true"` will skip all .files and .folders while syncing.
 
-### skip_symlinks
-Example: `skip_symlinks = "true"`
-
+#### skip_symlinks
+Example:
+```text
+# local_first = "false"
+# no_remote_delete = "false"
+skip_symlinks = "true"
+# debug_https = "false"
+# skip_dotfiles = "false"
+```
 Setting this to `"true"` will skip all symlinks while syncing.
 
-### monitor_interval
-Example: `monitor_interval = "300"`
-
+#### monitor_interval
+Example:
+```text
+# skip_dotfiles = "false"
+# dry_run = "false"
+monitor_interval = "300"
+# min_notify_changes = "5"
+# monitor_log_frequency = "5"
+```
 The monitor interval is defined as the wait time 'between' sync's when running in monitor mode. By default without configuration, the monitor_interval is set to 45 seconds. Setting this value to 300 will run the sync process every 5 minutes.
 
-### min_notify_changes
-Example: `min_notify_changes = "5"`
-
+#### min_notify_changes
+Example:
+```text
+# dry_run = "false"
+# monitor_interval = "45"
+min_notify_changes = "50"
+# monitor_log_frequency = "5"
+# monitor_fullscan_frequency = "10"
+```
 This option defines the minimum number of pending incoming changes necessary to trigger a desktop notification. This allows controlling the frequency of notifications.
 
-### Selective sync
+#### Selective sync via 'sync_list' file
 Selective sync allows you to sync only specific files and directories.
 To enable selective sync create a file named `sync_list` in `~/.config/onedrive`.
 Each line of the file represents a relative path from your `sync_dir`. All files and directories not matching any line of the file will be skipped during all operations.
@@ -304,8 +421,8 @@ Year 2
 ```
 **Note:** after changing the sync_list, you must perform a full re-synchronization by adding `--resync` to your existing command line - for example: `onedrive --synchronize --resync`
 
-### Skipping directories from syncing
-There are several mechanisms available to 'skip' a directory from scanning:
+### How to 'skip' directories from syncing?
+There are several mechanisms available to 'skip' a directory from the sync process:
 *   Utilise 'skip_dir'
 *   Utilise 'sync_list'
 
@@ -313,7 +430,14 @@ One further method is to add a '.nosync' empty file to any folder. When this fil
 
 To make this a permanent change to always skip folders when a '.nosync' empty file is present, add the following to your config file:
 
-Example: `check_nosync = "true"`
+Example:
+```text
+# upload_only = "false"
+# check_nomount = "false"
+check_nosync = "true"
+# download_only = "false"
+# disable_notifications = "false"
+```
 
 ### Shared folders (OneDrive Personal)
 Folders shared with you can be synced by adding them to your OneDrive. To do that open your Onedrive, go to the Shared files list, right click on the folder you want to sync and then click on "Add to my OneDrive".
@@ -322,17 +446,41 @@ Folders shared with you can be synced by adding them to your OneDrive. To do tha
 Currently not supported.
 
 ### SharePoint / Office 365 Shared Libraries
-Refer to [./Office365.md](Office365.md)
+Refer to [./Office365.md](Office365.md) for configuration assistance.
 
-### OneDrive service running as root user
+## Running 'onedrive' in 'monitor' mode
+Monitor mode (`--monitor`) allows the onedrive process to continually monitor your local file system for changes to files.
+
+Two common errors can occur when using monitor mode:
+*   Intialisation failure
+*   Unable to add a new inotify watch
+
+Both of these errors are local environment issues, where the following system variables need to be increased as the current system values are potentially too low:
+*   `fs.file-max`
+*   `fs.inotify.max_user_watches`
+
+To determine what these values are on your system use the following commands:
+```
+sysctl fs.file-max
+sysctl fs.inotify.max_user_watches
+```
+
+To make a change to these variables:
+```
+sudo sysctl fs.file-max=<new_value>
+sudo sysctl fs.inotify.max_user_watches=<new_value>
+```
+
+To make these changes permanent, refer to your OS reference documentation.
+
+## Running 'onedrive' as a system service
 There are two ways that onedrive can be used as a service
 *   via init.d
 *   via systemd
 
 **Note:** If using the service files, you may need to increase the `fs.inotify.max_user_watches` value on your system to handle the number of files in the directory you are monitoring as the initial value may be too low.
 
-**init.d**
-
+### OneDrive service running as root user via init.d
 ```text
 chkconfig onedrive on
 service onedrive start
@@ -343,7 +491,7 @@ tail -f /var/log/onedrive/<username>.onedrive.log
 ```
 To change what 'user' the client runs under (by default root), manually edit the init.d service file and modify `daemon --user root onedrive_service.sh` for the correct user.
 
-**systemd - Arch, Ubuntu, Debian, OpenSuSE, Fedora**
+### OneDrive service running as root user via systemd (Arch, Ubuntu, Debian, OpenSuSE, Fedora)
 ```text
 systemctl --user enable onedrive
 systemctl --user start onedrive
@@ -354,7 +502,8 @@ To see the logs run:
 journalctl --user-unit onedrive -f
 ```
 
-**systemd - Red Hat Enterprise Linux, CentOS Linux**
+### OneDrive service running as root user via systemd (Red Hat Enterprise Linux, CentOS Linux)
+
 ```text
 systemctl enable onedrive
 systemctl start onedrive
@@ -365,7 +514,7 @@ To see the logs run:
 journalctl onedrive -f
 ```
 
-### OneDrive service running as a non-root user via systemd
+### OneDrive service running as a non-root user via systemd (without notifications or GUI) 
 
 In some cases it is desirable to run the OneDrive client as a service, but not running as the 'root' user. In this case, follow the directions below to configure the service for a non-root user.
 
@@ -378,12 +527,35 @@ onedrive --synchronize --verbose
 systemctl enable onedrive@<username>.service
 systemctl start onedrive@<username>.service
 ```
-
 3.  To view the status of the service running for the user, use the following:
 ```text
-systemctl status onedrive@username.service
+systemctl status onedrive@<username>.service
 ```
 
+### OneDrive service running as a non-root user via systemd (with notifications enabled) (Arch, Ubuntu, Debian, OpenSuSE, Fedora)
+
+In some cases you may wish to receive GUI notifications when using the client when logged in as a non-root user. In this case, follow the directions below:
+
+1. Login via graphical UI as user you wish to enable the service for
+2. Disable any `onedive@` service files for your username - eg:
+```text
+sudo systemctl stop onedrive@alex.service
+sudo systemctl disable onedrive@alex.service
+```
+3. Enable service as per the following:
+```text
+systemctl --user enable onedrive
+systemctl --user start onedrive
+```
+
+To see the logs run:
+```text
+journalctl --user-unit onedrive -f
+```
+
+**Note:** `systemctl --user` is not applicable for Red Hat Enterprise Linux (RHEL) or CentOS Linux platforms
+
+## Additional Configuration
 ### Using multiple OneDrive accounts
 You can run multiple instances of the application by specifying a different config directory in order to handle multiple OneDrive accounts. For example, if you have a work and a personal account, you can run the onedrive command using the --confdir parameter. Here is an example:
 
@@ -403,11 +575,11 @@ onedrive --monitor --verbose --confdir="~/.config/onedriveWork" &
 
 ### Automatic syncing of both OneDrive accounts
 
-In order to automatically start syncing your OneDrive accounts, you will need to create a service file for each account. From the `~/onedrive` folder:
+In order to automatically start syncing your OneDrive accounts, you will need to create a service file for each account. From the `/usr/lib/systemd/user` folder:
 ```text
 cp onedrive.service onedrive-work.service
 ```
-And edit the line beginning with `ExecStart` so that the command mirrors the one you used above:
+And edit the line beginning with `ExecStart` so that the confdir mirrors the one you used above:
 ```text
 ExecStart=/usr/local/bin/onedrive --monitor --confdir="/path/to/config/dir"
 ```
@@ -477,13 +649,15 @@ Usage:
 Options:
 
   --auth-files ARG
-      Perform  authorization  via  two files passed in as ARG in the format `authUrl:responseUrl`  
-      The authorization URL is written to the `authUrl`, then onedrive waits for the file `responseUrl` 
-      to be present, and reads the response from that file.
+      Perform authorization via two files passed in as ARG in the format `authUrl:responseUrl`
+	  The authorization URL is written to the `authUrl`, then onedrive waits for the file `responseUrl`
+	  to be present, and reads the response from that file.
   --check-for-nomount
       Check for the presence of .nosync in the syncdir root. If found, do not perform sync.
   --check-for-nosync
       Check for the presence of .nosync in each directory. If found, skip directory from sync.
+  --classify-as-big-delete
+      Number of children in a path that is locally removed which will be classified as a 'big data delete'
   --confdir ARG
       Set the directory used to store the configuration files
   --create-directory ARG
@@ -506,6 +680,8 @@ Options:
       Perform a trial sync with no changes made
   --enable-logging
       Enable client activity to a separate log file
+  --force
+      Force the deletion of data when a 'big delete' is detected
   --force-http-1.1
       Force the use of HTTP/1.1 for all operations (DEPRECIATED)
   --force-http-2
@@ -538,32 +714,38 @@ Options:
       Print the access token, useful for debugging
   --remove-directory ARG
       Remove a directory on OneDrive - no sync will be performed.
+  --remove-source-files
+      Remove source file after successful transfer to OneDrive when using --upload-only
   --resync
       Forget the last saved state, perform a full sync
   --single-directory ARG
       Specify a single local directory within the OneDrive root to sync.
+  --skip-dir ARG
+      Skip any directories that match this pattern from syncing
+  --skip-dir-strict-match
+      When matching skip_dir directories, only match explicit matches
   --skip-dot-files
       Skip dot files and folders from syncing
   --skip-file ARG
       Skip any files that match this pattern from syncing
+  --skip-size
+      Skip new files larger than this size (in MB)
   --skip-symlinks
       Skip syncing of symlinks
   --source-directory ARG
       Source directory to rename or move on OneDrive - no sync will be performed.
   --sync-root-files
-      Sync all files in sync_dir root when using sync_list.	  
+      Sync all files in sync_dir root when using sync_list.
   --syncdir ARG
       Specify the local directory used for synchronization to OneDrive
   --synchronize
       Perform a synchronization
   --upload-only
       Only upload to OneDrive, do not sync changes from OneDrive locally
+  --user-agent ARG
+      Specify a User Agent string to the http client
   --verbose -v+
       Print more details, useful for debugging (repeat for extra debugging)
   --version
       Print the version and exit
 ```
-
-### File naming
-The files and directories in the synchronization directory must follow the [Windows naming conventions](https://msdn.microsoft.com/en-us/library/aa365247).
-The application will attempt to handle instances where you have two files with the same names but with different capitalization. Where there is a namespace clash, the file name which clashes will not be synced. This is expected behavior and won't be fixed.

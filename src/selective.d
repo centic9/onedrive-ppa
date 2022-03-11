@@ -11,6 +11,7 @@ final class SelectiveSync
 	private string[] paths;
 	private Regex!char mask;
 	private Regex!char dirmask;
+	private bool skipDirStrictMatch = false;
 
 	void load(string filepath)
 	{
@@ -21,6 +22,13 @@ final class SelectiveSync
 				.filter!(a => a.length > 0)
 				.array;
 		}
+	}
+	
+	// Configure skipDirStrictMatch if function is called
+	// By default, skipDirStrictMatch = false;
+	void setSkipDirStrictMatch()
+	{
+		skipDirStrictMatch = true;
 	}
 
 	void setFileMask(const(char)[] mask)
@@ -44,10 +52,13 @@ final class SelectiveSync
 		if (!name.matchFirst(dirmask).empty) {
 			return true;
 		} else {
-			// check just the file name
-			string filename = baseName(name);
-			if(!filename.matchFirst(dirmask).empty) {
-				return true;
+			// Do we check the base name as well?
+			if (!skipDirStrictMatch) {
+				// check just the basename in the path
+				string filename = baseName(name);
+				if(!filename.matchFirst(dirmask).empty) {
+					return true;
+				}
 			}
 		}
 		// no match
@@ -75,8 +86,14 @@ final class SelectiveSync
 		return false;
 	}
 	
-	// config sync_list file handling
-	bool isPathExcluded(string path)
+	// Match against sync_list only
+	bool isPathExcludedViaSyncList(string path)
+	{
+		return .isPathExcluded(path, paths);
+	}
+	
+	// Match against skip_dir, skip_file & sync_list entries
+	bool isPathExcludedMatchAll(string path)
 	{
 		return .isPathExcluded(path, paths) || .isPathMatched(path, mask) || .isPathMatched(path, dirmask);
 	}

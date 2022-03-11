@@ -100,6 +100,17 @@ void vdebug(T...)(T args)
 	}
 }
 
+void vdebugUpload(T...)(T args)
+{
+	if (verbose >= 2) {
+		writeln("\n[DEBUG] ", args);
+		if(writeLogFile){
+			// Write to log file
+			logfileWriteLine("\n[DEBUG] ", args);
+		}
+	}
+}
+
 void error(T...)(T args)
 {
 	stderr.writeln(args);
@@ -128,6 +139,11 @@ void notify(T...)(T args)
 			auto n = new Notification("OneDrive", result, "IGNORED");
 			try {
 				n.show();
+				// Sent message to notification daemon
+				if (verbose >= 2) {
+					writeln("[DEBUG] Sent notification to notification service. If notification is not displayed, check dbus or notification-daemon for errors");
+				}
+				
 			} catch (Throwable e) {
 				vlog("Got exception from showing notification: ", e);
 			}
@@ -163,11 +179,25 @@ private void logfileWriteLine(T...)(T args)
 private string getUserName()
 {
 	auto pw = getpwuid(getuid);
-	auto uinfo = pw.pw_gecos[0 .. strlen(pw.pw_gecos)].splitter(',');
-	if (!uinfo.empty && uinfo.front.length){
-		return uinfo.front.idup;
+	
+	// get required details
+	auto runtime_pw_name = pw.pw_name[0 .. strlen(pw.pw_name)].splitter(',');
+	auto runtime_pw_uid = pw.pw_uid;
+	auto runtime_pw_gid = pw.pw_gid;
+	
+	// user identifiers from process
+	vdebug("Process ID: ", pw);
+	vdebug("User UID:   ", runtime_pw_uid);
+	vdebug("User GID:   ", runtime_pw_gid);
+	
+	// What should be returned as username?
+	if (!runtime_pw_name.empty && runtime_pw_name.front.length){
+		// user resolved
+		vdebug("User Name:  ", runtime_pw_name.front.idup);
+		return runtime_pw_name.front.idup;
 	} else {
 		// Unknown user?
+		vdebug("User Name:  unknown");
 		return "unknown";
 	}
 }
