@@ -76,9 +76,10 @@ final class Config
 		longValues["skip_size"] = 0;
 		longValues["min_notify_changes"] = 5;
 		longValues["monitor_log_frequency"] = 5;
-		// Number of n sync runs before performing a full local scan of sync_dir
-		// By default 10 which means every ~7.5 minutes a full disk scan of sync_dir will occur
-		longValues["monitor_fullscan_frequency"] = 10;
+		// Number of N sync runs before performing a full local scan of sync_dir
+		// By default 12 which means every ~60 minutes a full disk scan of sync_dir will occur 
+		// 'monitor_interval' * 'monitor_fullscan_frequency' = 3600 = 1 hour
+		longValues["monitor_fullscan_frequency"] = 12;
 		// Number of children in a path that is locally removed which will be classified as a 'big data delete'
 		longValues["classify_as_big_delete"] = 1000;
 		// Delete source after successful transfer
@@ -123,8 +124,9 @@ final class Config
 		longValues["rate_limit"] = 0;
 		// maximum time an operation is allowed to take
 		// This includes dns resolution, connecting, data transfer, etc.
-		longValues["operation_timeout"] = 3600;		
-
+		longValues["operation_timeout"] = 3600;
+		// To ensure we do not fill up the load disk, how much disk space should be reserved by default
+		longValues["space_reservation"] = 50 * 2^^20; // 50 MB as Bytes
 		// Webhook options
 		boolValues["webhook_enabled"] = false;
 		stringValues["webhook_public_url"] = "";
@@ -302,6 +304,7 @@ final class Config
 		boolValues["synchronize"]         = false;
 		boolValues["force"]               = false;
 		boolValues["list_business_shared_folders"] = false;
+		boolValues["force_sync"]          = false;
 
 		// Application Startup option validation
 		try {
@@ -371,6 +374,9 @@ final class Config
 				"force",
 					"Force the deletion of data when a 'big delete' is detected",
 					&boolValues["force"],
+				"force-sync",
+					"Force a synchronization of a specific folder, only when using --synchronize --single-directory and ignore all non-default skip_dir and skip_file rules",
+					&boolValues["force_sync"],
 				"get-file-link",
 					"Display the file link of a synced file",
 					&stringValues["get_file_link"],
@@ -452,6 +458,9 @@ final class Config
 				"source-directory",
 					"Source directory to rename or move on OneDrive - no sync will be performed.",
 					&stringValues["source_directory"],
+				"space-reservation",
+					"The amount of disk space to reserve (in MB) to avoid 100% disk space utilisation",
+					&longValues["space_reservation"],
 				"syncdir",
 					"Specify the local directory used for synchronization to OneDrive",
 					&stringValues["sync_dir"],
@@ -548,9 +557,19 @@ final class Config
 	private bool load(string filename)
 	{
 		// configure function variables
+		try {
+			readText(filename);
+		} catch (std.file.FileException e) {
+			// Unable to access required file
+			log.error("ERROR: Unable to access ", e.msg);
+			// Use exit scopes to shutdown API
+			return false;
+		}
+		
+		// We were able to readText the config file - so, we should be able to open and read it
 		auto file = File(filename, "r");
 		string lineBuffer;
-
+		
 		// configure scopes
 		// - failure
 		scope(failure) {
@@ -646,6 +665,16 @@ final class Config
 						if (ppp) {
 							c.popFront();
 							setValueLong(key, to!long(c.front.dup));
+							// if key is space_reservation we have to calculate MB -> bytes
+							if (key == "space_reservation") {
+								// temp value
+								ulong tempValue = to!long(c.front.dup);
+								// a value of 0 needs to be made at least 1MB .. 
+								if (tempValue == 0) {
+									tempValue = 1;
+								}
+								setValueLong("space_reservation", to!long(tempValue * 2^^20));
+							}
 						} else {
 							log.log("Unknown key in config file: ", key);
 							return false;
@@ -712,11 +741,27 @@ final class Config
 		}
 		return configuredFilePermissionMode;
 	}
+	
+	void resetSkipToDefaults() {
+		// reset skip_file and skip_dir to application defaults
+		// skip_file
+		log.vdebug("original skip_file: ", getValueString("skip_file"));
+		log.vdebug("resetting skip_file");
+		setValueString("skip_file", defaultSkipFile);
+		log.vdebug("reset skip_file: ", getValueString("skip_file"));
+		// skip_dir
+		log.vdebug("original skip_dir: ", getValueString("skip_dir"));
+		log.vdebug("resetting skip_dir");
+		setValueString("skip_dir", defaultSkipDir);
+		log.vdebug("reset skip_dir: ", getValueString("skip_dir"));
+	}
 }
 
 void outputLongHelp(Option[] opt)
 {
 	auto argsNeedingOptions = [
+		"--auth-files",
+		"--auth-response",
 		"--confdir",
 		"--create-directory",
 		"--create-share-link",
@@ -731,8 +776,11 @@ void outputLongHelp(Option[] opt)
 		"--monitor-fullscan-frequency",
 		"--remove-directory",
 		"--single-directory",
+		"--skip-dir",
 		"--skip-file",
+		"--skip-size",
 		"--source-directory",
+		"--space-reservation",
 		"--syncdir",
 		"--user-agent" ];
 	writeln(`OneDrive - a client for OneDrive Cloud Services

@@ -1,3 +1,12 @@
+onedrive (2.4.18-0.1) unstable; urgency=medium
+
+  * Non-maintainer upload.
+  * New upstream release (Closes: #988630).
+  * d/control: Remove Vcs because debian branch is dropped.
+  * d/copyright: Convert to machine-readable format and add missing info.
+
+ -- Bastian Germann <bage@debian.org>  Mon, 06 Jun 2022 21:38:54 +0000
+
 onedrive (2.4.13-1) unstable; urgency=medium
 
   * New upstream release.
