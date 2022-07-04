@@ -2,7 +2,47 @@
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
-## 2.4.16 - 2021-03-10
+## 2.4.18 - 2022-06-02
+### Fixed
+*   Fixed various database related access issues steming from running multiple instances of the application at the same time using the same configuration data
+*   Fixed --display-config being impacted by --resync flag
+*   Fixed installation permissions for onedrive man-pages file
+*   Fixed that in some situations that users try --upload-only and --download-only together which is not possible
+*   Fixed application crash if unable to read required hash files
+
+### Added
+*   Added Feature Request to add an override for skip_dir|skip_file through flag to force sync
+*   Added a check to validate local filesystem available space before attempting file download
+*   Added GitHub Actions to build Docker containers and push to DockerHub 
+
+### Updated
+*   Updated all Docker build files to current distributions, using updated distribution LDC version
+*   Updated logging output to logfiles when an actual sync process is occuring
+*   Updated output of --display-config to be more relevant
+*   Updated manpage to align with application configuration
+*   Updated documentation and Docker files based on minimum compiler versions to dmd-2.088.0 and ldc-1.18.0
+*   Updated documentation (various)
+
+## 2.4.17 - 2022-04-30
+### Fixed
+*   Fix docker build, by add missing git package for Fedora builds
+*   Fix application crash when attempting to sync a broken symbolic link
+*   Fix Internet connect disruption retry handling and logging output
+*   Fix local folder creation timestamp with timestamp from OneDrive
+*   Fix logging output when download failed
+
+### Added
+*   Add additional logging specifically for delete event to denote in log output the source of a deletion event when running in --monitor mode
+
+### Changed
+*   Improve when the local database integrity check is performed and on what frequency the database integrity check is performed
+
+### Updated
+*   Remove application output ambiguity on how to access 'help' for the client
+*   Update logging output when running in --monitor --verbose mode in regards to the inotify events
+*   Updated documentation (various)
+
+## 2.4.16 - 2022-03-10
 ### Fixed
 *   Update application file logging error handling
 *   Explicitly set libcurl options

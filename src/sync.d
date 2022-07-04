@@ -269,7 +269,7 @@ final class SyncEngine
 	private bool nationalCloudDeployment = false;
 	// array of all OneDrive driveId's for use with OneDrive Business Folders
 	private string[] driveIDsArray;
-
+	
 	this(Config cfg, OneDriveApi onedrive, ItemDatabase itemdb, SelectiveSync selectiveSync)
 	{
 		assert(onedrive && itemdb && selectiveSync);
@@ -2667,6 +2667,12 @@ final class SyncEngine
 						// Configure the applicable permissions for the folder
 						log.vdebug("Setting directory permissions for: ", path);
 						path.setAttributes(cfg.returnRequiredDirectoryPermisions());
+						// Update the time of the folder to match the last modified time as is provided by OneDrive
+						// If there are any files then downloaded into this folder, the last modified time will get 
+						// updated by the local Operating System with the latest timestamp - as this is normal operation
+						// as the directory has been modified
+						log.vdebug("Setting directory lastModifiedDateTime for: ", path , " to ", item.mtime);
+						setTimes(path, item.mtime, item.mtime);
 					}
 				} catch (FileException e) {
 					// display the error message
@@ -2816,6 +2822,28 @@ final class SyncEngine
 				log.vdebug("WARNING: fileDetails['file']['hashes'] is missing - unable to compare file hash after download");
 			}
 			
+			// Is there enough free space locally to download the file
+			// - We can use '.' here as we change the current working directory to the configured 'sync_dir'
+			ulong localActualFreeSpace = to!ulong(getAvailableDiskSpace("."));
+			// So that we are not responsible in making the disk 100% full if we can download the file, compare the current available space against the reservation set and file size
+			// The reservation value is user configurable in the config file, 50MB by default
+			ulong freeSpaceReservation = cfg.getValueLong("space_reservation");
+			// debug output
+			log.vdebug("Local Disk Space Actual: ", localActualFreeSpace);
+			log.vdebug("Free Space Reservation:  ", freeSpaceReservation);
+			log.vdebug("File Size to Download:   ", fileSize);
+			
+			// calculate if we can download file
+			if ((localActualFreeSpace < freeSpaceReservation) || (fileSize > localActualFreeSpace)) {
+				// localActualFreeSpace is less than freeSpaceReservation .. insufficient free space
+				// fileSize is greater than localActualFreeSpace .. insufficient free space
+				writeln("failed!");
+				log.log("Insufficient local disk space to download file");
+				downloadFailed = true;
+				return;
+			}
+			
+			// Attempt to download the file
 			try {
 				onedrive.downloadById(item.driveId, item.id, path, fileSize);
 			} catch (OneDriveException e) {
@@ -2975,6 +3003,9 @@ final class SyncEngine
 		if (!downloadFailed) {
 			writeln("done.");
 			log.fileOnly("Downloading file ", path, " ... done.");
+		} else {
+			writeln("failed!");
+			log.fileOnly("Downloading file ", path, " ... failed!");
 		}
 	}
 
@@ -3469,16 +3500,23 @@ final class SyncEngine
 	{
 		assert(item.type == ItemType.dir);
 		if (exists(path)) {
-			if (!isDir(path)) {
-				log.vlog("The item was a directory but now it is a file");
-				uploadDeleteItem(item, path);
-				uploadNewFile(path);
-			} else {
-				log.vlog("The directory has not changed");
-				// loop through the children
-				foreach (Item child; itemdb.selectChildren(item.driveId, item.id)) {
-					uploadDifferences(child);
+			// Fix https://github.com/abraunegg/onedrive/issues/1915
+			try {
+				if (!isDir(path)) {
+					log.vlog("The item was a directory but now it is a file");
+					uploadDeleteItem(item, path);
+					uploadNewFile(path);
+				} else {
+					log.vlog("The directory has not changed");
+					// loop through the children
+					foreach (Item child; itemdb.selectChildren(item.driveId, item.id)) {
+						uploadDifferences(child);
+					}
 				}
+			} catch (FileException e) {
+				// display the error message
+				displayFileSystemErrorMessage(e.msg, getFunctionName!({}));
+				return;
 			}
 		} else {
 			// Directory does not exist locally
