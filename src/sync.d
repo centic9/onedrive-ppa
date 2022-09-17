@@ -186,7 +186,7 @@ private Item makeItem(const ref JSONValue driveItem)
 		item.remoteId = driveItem["remoteItem"]["id"].str;
 	}
 	
-	// National Cloud Deployments (US and DE) do not support /delta as a query
+	// National Cloud Deployments do not support /delta as a query
 	// Thus we need to track in the database that this item is in sync
 	// As we are making an item, set the syncStatus to Y
 	// ONLY when using a National Cloud Deployment, all the existing DB entries will get set to N
@@ -315,6 +315,7 @@ final class SyncEngine
 					log.error("\nERROR: Check your 'drive_id' entry in your configuration file as it may be incorrect\n");
 				}
 				// Must exit here
+				onedrive.shutdown();
 				exit(-1);
 			}
 			if (e.httpStatusCode == 401) {
@@ -322,6 +323,7 @@ final class SyncEngine
 				displayOneDriveErrorMessage(e.msg, getFunctionName!({}));
 				log.errorAndNotify("\nERROR: Check your configuration as your refresh_token may be empty or invalid. You may need to issue a --reauth and re-authorise this client.\n");
 				// Must exit here
+				onedrive.shutdown();
 				exit(-1);
 			}
 			if (e.httpStatusCode == 429) {
@@ -337,6 +339,7 @@ final class SyncEngine
 				// There was a HTTP 5xx Server Side Error
 				displayOneDriveErrorMessage(e.msg, getFunctionName!({}));
 				// Must exit here
+				onedrive.shutdown();
 				exit(-1);
 			}
 		}
@@ -354,6 +357,7 @@ final class SyncEngine
 					log.error("\nERROR: Check your 'drive_id' entry in your configuration file as it may be incorrect\n");
 				}
 				// Must exit here
+				onedrive.shutdown();
 				exit(-1);
 			}
 			if (e.httpStatusCode == 401) {
@@ -361,6 +365,7 @@ final class SyncEngine
 				displayOneDriveErrorMessage(e.msg, getFunctionName!({}));
 				log.errorAndNotify("\nERROR: Check your configuration as your refresh_token may be empty or invalid. You may need to issue a --reauth and re-authorise this client.\n");
 				// Must exit here
+				onedrive.shutdown();
 				exit(-1);
 			}
 			if (e.httpStatusCode == 429) {
@@ -376,6 +381,7 @@ final class SyncEngine
 				// There was a HTTP 5xx Server Side Error
 				displayOneDriveErrorMessage(e.msg, getFunctionName!({}));
 				// Must exit here
+				onedrive.shutdown();
 				exit(-1);
 			}
 		}
@@ -510,6 +516,7 @@ final class SyncEngine
 			log.vdebug("OneDrive Account Details:      ", oneDriveDetails);
 			log.vdebug("OneDrive Account Root Details: ", oneDriveRootDetails);
 			// Must exit here
+			onedrive.shutdown();
 			exit(-1);
 		}
 	}
@@ -672,6 +679,7 @@ final class SyncEngine
 					displayOneDriveErrorMessage(e.msg, getFunctionName!({}));
 					log.errorAndNotify("\nERROR: Check your configuration as your refresh_token may be empty or invalid. You may need to issue a --reauth and re-authorise this client.\n");
 					// Must exit here
+					onedrive.shutdown();
 					exit(-1);
 				}
 				if (e.httpStatusCode == 429) {
@@ -685,6 +693,7 @@ final class SyncEngine
 					// There was a HTTP 5xx Server Side Error
 					displayOneDriveErrorMessage(e.msg, getFunctionName!({}));
 					// Must exit here
+					onedrive.shutdown();
 					exit(-1);
 				}
 			}
@@ -866,6 +875,7 @@ final class SyncEngine
 					displayOneDriveErrorMessage(e.msg, getFunctionName!({}));
 					log.errorAndNotify("\nERROR: Check your configuration as your refresh_token may be empty or invalid. You may need to issue a --reauth and re-authorise this client.\n");
 					// Must exit here
+					onedrive.shutdown();
 					exit(-1);
 				}
 				if (e.httpStatusCode == 429) {
@@ -879,6 +889,7 @@ final class SyncEngine
 					// There was a HTTP 5xx Server Side Error
 					displayOneDriveErrorMessage(e.msg, getFunctionName!({}));
 					// Must exit here
+					onedrive.shutdown();
 					exit(-1);
 				}
 			}
@@ -1074,6 +1085,7 @@ final class SyncEngine
 			log.error("ERROR: Unable to query OneDrive for account details");
 			log.vdebug("onedrive.getDefaultRoot call returned an invalid JSON Object");
 			// Must exit here as we cant configure our required variables
+			onedrive.shutdown();
 			exit(-1);
 		}
 	}
@@ -1471,36 +1483,39 @@ final class SyncEngine
 			// To view changes correctly, we need to use the correct path id for the request
 			if (driveId == defaultDriveId) {
 				// The drive id matches our users default drive id
-				idToQuery = defaultRootId.dup;
 				log.vdebug("Configuring 'idToQuery' as defaultRootId duplicate");
+				idToQuery = defaultRootId.dup;
 			} else {
 				// The drive id does not match our users default drive id
 				// Potentially the 'path id' we are requesting the details of is a Shared Folder (remote item)
 				// Use the 'id' that was passed in (folderId)
-				idToQuery = id.dup;
 				log.vdebug("Configuring 'idToQuery' as 'id' duplicate");
+				idToQuery = id.dup;
 			}
 			// what path id are we going to query?
 			log.vdebug("Path object to query configured as 'idToQuery' = ", idToQuery);
 			long deltaChanges = 0;
 			
 			// What query do we use?
-			// National Cloud Deployments (US and DE) do not support /delta as a query
+			// National Cloud Deployments do not support /delta as a query
 			// https://docs.microsoft.com/en-us/graph/deployments#supported-features
 			// Are we running against a National Cloud Deployments that does not support /delta
 			if (nationalCloudDeployment) {
-				// Have to query /children rather than /delta
+				// National Cloud Deployment that does not support /delta query
+				// Have to query /children and build our own /delta response
 				nationalCloudChildrenScan = true;
 				log.vdebug("Using /children call to query drive for items to populate 'changes' and 'changesAvailable'");
 				// In a OneDrive Business Shared Folder scenario + nationalCloudDeployment, if ALL items are downgraded, then this leads to local file deletion
 				// Downgrade ONLY files associated with this driveId and idToQuery
 				log.vdebug("Downgrading all children for this driveId (" ~ driveId ~ ") and idToQuery (" ~ idToQuery ~ ") to an out-of-sync state");
+				
 				// Before we get any data, flag any object in the database as out-of-sync for this driveID & ID
 				auto drivePathChildren = itemdb.selectChildren(driveId, idToQuery);
 				if (count(drivePathChildren) > 0) {
 					// Children to process and flag as out-of-sync	
 					foreach (drivePathChild; drivePathChildren) {
 						// Flag any object in the database as out-of-sync for this driveID & ID
+						log.vdebug("Downgrading item as out-of-sync: ", drivePathChild.id);
 						itemdb.downgradeSyncStatusFlag(drivePathChild.driveId, drivePathChild.id);
 					}
 				}
@@ -1776,6 +1791,48 @@ final class SyncEngine
 				}
 			}
 			
+			// In some OneDrive Business scenarios, the shared folder /delta response lacks the 'root' drive details
+			// When this occurs, this creates the following error: A database statement execution error occurred: foreign key constraint failed
+			// Ensure we query independently the root details for this shared folder and ensure that it is added before we process the /delta response
+			
+			// However, if we are using a National Cloud Deployment, these deployments do not support /delta, so we generate a /delta response via generateDeltaResponse()
+			// This specifically adds the root drive details to the self generated /delta response
+			if ((!nationalCloudDeployment) && (driveId!= defaultDriveId) && (syncBusinessFolders)) {
+				// fetch this driveId root details to ensure we add this to the database for this remote drive
+				JSONValue rootData;
+				
+				try {
+					rootData = onedrive.getDriveIdRoot(driveId);
+				} catch (OneDriveException e) {
+					log.vdebug("rootData = onedrive.getDriveIdRoot(driveId) generated a OneDriveException");
+					// HTTP request returned status code 504 (Gateway Timeout) or 429 retry
+					if ((e.httpStatusCode == 429) || (e.httpStatusCode == 504)) {
+						// HTTP request returned status code 429 (Too Many Requests). We need to leverage the response Retry-After HTTP header to ensure minimum delay until the throttle is removed.
+						if (e.httpStatusCode == 429) {
+							log.vdebug("Retrying original request that generated the OneDrive HTTP 429 Response Code (Too Many Requests) - retrying applicable request");
+							handleOneDriveThrottleRequest();
+						}
+						if (e.httpStatusCode == 504) {
+							log.vdebug("Retrying original request that generated the HTTP 504 (Gateway Timeout) - retrying applicable request");
+							Thread.sleep(dur!"seconds"(30));
+						}
+						// Retry original request by calling function again to avoid replicating any further error handling
+						rootData = onedrive.getDriveIdRoot(driveId);
+						
+					} else {
+						// There was a HTTP 5xx Server Side Error
+						displayOneDriveErrorMessage(e.msg, getFunctionName!({}));
+						// Must exit here
+						onedrive.shutdown();
+						exit(-1);
+					}
+				}
+				
+				// apply this root drive data
+				applyDifference(rootData, driveId, true);
+			}
+			
+			// Process /delta response from OneDrive
 			// is changes a valid JSON response
 			if (changes.type() == JSONType.object) {
 				// Are there any changes to process?
@@ -2468,9 +2525,13 @@ final class SyncEngine
 				SysTime remoteModifiedTime = item.mtime;
 				remoteModifiedTime.fracSecs = Duration.zero;
 				
-				if (localModifiedTime != remoteModifiedTime) {
-					// Database update needed for this item because our record is out-of-date
-					log.vdebug("Updating local database with item details as timestamps of items are different");
+				// If the timestamp is different, or we are running on a National Cloud Deployment that does not support /delta queries - we have to update the DB with the details from OneDrive
+				// Unfortunatly because of the consequence of Nataional Cloud Deployments not supporting /delta queries, the application uses the local database to flag what is out-of-date / track changes
+				// This means that the constant disk writing to the database fix implemented with https://github.com/abraunegg/onedrive/pull/2004 cannot be utilised when using Nataional Cloud Deployments
+				// as all records are touched / updated when performing the OneDrive sync operations. The only way to change this, is for Microsoft to support /delta queries for Nataional Cloud Deployments
+				if ((localModifiedTime != remoteModifiedTime) || (nationalCloudDeployment)) {
+					// Database update needed for this item because our local record is out-of-date
+					log.vdebug("Updating local database with item details from OneDrive as local record needs to be updated");
 					itemdb.update(item);
 				}
 			} else {
@@ -3160,27 +3221,9 @@ final class SyncEngine
 		}
 		
 		// Are we configured to use a National Cloud Deployment
-		// Any entry in the DB than is flagged as out-of-sync needs to be cleaned up locally first before we scan the entire DB
-		// Normally, this is done at the end of processing all /delta queries, but National Cloud Deployments (US and DE) do not support /delta as a query
-		if ((nationalCloudDeployment) || (syncBusinessFolders)) {
+		if (nationalCloudDeployment) {
 			// Select items that have a out-of-sync flag set
-			foreach (driveId; driveIDsArray) {
-				// For each unique OneDrive driveID we know about
-				Item[] outOfSyncItems = itemdb.selectOutOfSyncItems(driveId);
-				foreach (item; outOfSyncItems) {
-					if (!dryRun) {
-						// clean up idsToDelete
-						idsToDelete.length = 0;
-						assumeSafeAppend(idsToDelete);
-						// flag to delete local file as it now is no longer in sync with OneDrive
-						log.vdebug("Flagging to delete local item as it now is no longer in sync with OneDrive");
-						log.vdebug("item: ", item);
-						idsToDelete ~= [item.driveId, item.id];	
-						// delete items in idsToDelete
-						if (idsToDelete.length > 0) deleteItems();
-					}
-				}
-			}
+			flagNationalCloudDeploymentOutOfSyncItems();
 		}
 		
 		// scan for changes in the path provided
@@ -3261,27 +3304,9 @@ final class SyncEngine
 		}
 		
 		// Are we configured to use a National Cloud Deployment
-		// Any entry in the DB than is flagged as out-of-sync needs to be cleaned up locally first before we scan the entire DB
-		// Normally, this is done at the end of processing all /delta queries, but National Cloud Deployments (US and DE) do not support /delta as a query
-		if ((nationalCloudDeployment) || (syncBusinessFolders)) {
+		if (nationalCloudDeployment) {
 			// Select items that have a out-of-sync flag set
-			foreach (driveId; driveIDsArray) {
-				// For each unique OneDrive driveID we know about
-				Item[] outOfSyncItems = itemdb.selectOutOfSyncItems(driveId);
-				foreach (item; outOfSyncItems) {
-					if (!dryRun) {
-						// clean up idsToDelete
-						idsToDelete.length = 0;
-						assumeSafeAppend(idsToDelete);
-						// flag to delete local file as it now is no longer in sync with OneDrive
-						log.vdebug("Flagging to delete local item as it now is no longer in sync with OneDrive");
-						log.vdebug("item: ", item);
-						idsToDelete ~= [item.driveId, item.id];	
-						// delete items in idsToDelete
-						if (idsToDelete.length > 0) deleteItems();
-					}
-				}
-			}
+			flagNationalCloudDeploymentOutOfSyncItems();
 		}
 		
 		// scan for changes in the path provided
@@ -3317,6 +3342,30 @@ final class SyncEngine
 					// Does it still exist on disk in the location the DB thinks it is
 					log.vdebug("Calling uploadDifferences(dbItem) as item is present in local cache DB");
 					uploadDifferences(item);
+				}
+			}
+		}
+	}
+	
+	void flagNationalCloudDeploymentOutOfSyncItems() {
+		// Any entry in the DB than is flagged as out-of-sync needs to be cleaned up locally first before we scan the entire DB
+		// Normally, this is done at the end of processing all /delta queries, however National Cloud Deployments do not support /delta as a query
+		// https://docs.microsoft.com/en-us/graph/deployments#supported-features
+		// Select items that have a out-of-sync flag set
+		foreach (driveId; driveIDsArray) {
+			// For each unique OneDrive driveID we know about
+			Item[] outOfSyncItems = itemdb.selectOutOfSyncItems(driveId);
+			foreach (item; outOfSyncItems) {
+				if (!dryRun) {
+					// clean up idsToDelete
+					idsToDelete.length = 0;
+					assumeSafeAppend(idsToDelete);
+					// flag to delete local file as it now is no longer in sync with OneDrive
+					log.vdebug("Flagging to delete local item as it now is no longer in sync with OneDrive");
+					log.vdebug("item: ", item);
+					idsToDelete ~= [item.driveId, item.id];	
+					// delete items in idsToDelete
+					if (idsToDelete.length > 0) deleteItems();
 				}
 			}
 		}
@@ -5526,6 +5575,7 @@ final class SyncEngine
 					log.error("ERROR: An attempt to remove a large volume of data from OneDrive has been detected. Exiting client to preserve data on OneDrive");
 					log.error("ERROR: To delete a large volume of data use --force or increase the config value 'classify_as_big_delete' to a larger value");
 					// Must exit here to preserve data on OneDrive
+					onedrive.shutdown();
 					exit(-1);
 				}
 			}
@@ -5564,7 +5614,7 @@ final class SyncEngine
 						if (errorMessage["error"]["message"].str == "Access denied. You do not have permission to perform this action or access this resource.") {
 							// Issue #1041 - Unable to delete OneDrive content when permissions prevent deletion
 							try {
-								log.vdebug("Attemtping a reverse delete of all child objects from OneDrive");
+								log.vdebug("Attempting a reverse delete of all child objects from OneDrive");
 								foreach_reverse (Item child; children) {
 									log.vdebug("Delete child item from drive: ", child.driveId);
 									log.vdebug("Delete this child item id: ", child.id);
@@ -5592,7 +5642,7 @@ final class SyncEngine
 						if (errorMessage["error"]["message"].str == "Request was cancelled by event received. If attempting to delete a non-empty folder, it's possible that it's on hold") {
 							// Issue #338 - Unable to delete OneDrive content when OneDrive Business Retention Policy is enabled
 							try {
-								log.vdebug("Attemtping a reverse delete of all child objects from OneDrive");
+								log.vdebug("Attempting a reverse delete of all child objects from OneDrive");
 								foreach_reverse (Item child; children) {
 									log.vdebug("Delete child item from drive: ", child.driveId);
 									log.vdebug("Delete this child item id: ", child.id);
@@ -6554,6 +6604,7 @@ final class SyncEngine
 				// There was a HTTP 5xx Server Side Error
 				displayOneDriveErrorMessage(e.msg, getFunctionName!({}));
 				// Must exit here
+				onedrive.shutdown();
 				exit(-1);
 			}
 		}
@@ -6582,6 +6633,7 @@ final class SyncEngine
 					// There was a HTTP 5xx Server Side Error
 					displayOneDriveErrorMessage(e.msg, getFunctionName!({}));
 					// Must exit here
+					onedrive.shutdown();
 					exit(-1);
 				}
 			}
@@ -6825,6 +6877,7 @@ final class SyncEngine
 				displayOneDriveErrorMessage(e.msg, getFunctionName!({}));
 				log.errorAndNotify("\nERROR: Check your configuration as your refresh_token may be empty or invalid. You may need to issue a --reauth and re-authorise this client.\n");
 				// Must exit here
+				onedrive.shutdown();
 				exit(-1);
 			}
 			if (e.httpStatusCode == 429) {
@@ -6838,6 +6891,7 @@ final class SyncEngine
 				// There was a HTTP 5xx Server Side Error
 				displayOneDriveErrorMessage(e.msg, getFunctionName!({}));
 				// Must exit here
+				onedrive.shutdown();
 				exit(-1);
 			}
 		}
@@ -6908,6 +6962,7 @@ final class SyncEngine
 			// broken tree in the database, we cant compute the path for this item id, exit
 			log.error("ERROR: A database consistency issue has been caught. A --resync is needed to rebuild the database.");
 			// Must exit here to preserve data
+			onedrive.shutdown();
 			exit(-1);
 		}
 		

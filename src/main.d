@@ -146,6 +146,9 @@ int main(string[] args)
 		return EXIT_FAILURE;
 	}
 
+	// confdirOption must be a directory, not a file
+	// - By default ~/.config/onedrive will be used
+	// - If the user is using --confdir , the confdirOption needs to be evaluated when trying to load any file
 	// load configuration file if available
 	auto cfg = new config.Config(confdirOption);
 	if (!cfg.initialize()) {
@@ -679,7 +682,7 @@ int main(string[] args)
 		writeln("Config option 'azure_ad_endpoint'            = ", cfg.getValueString("azure_ad_endpoint"));
 		writeln("Config option 'azure_tenant_id'              = ", cfg.getValueString("azure_tenant_id"));
 		writeln("Config option 'user_agent'                   = ", cfg.getValueString("user_agent"));
-		writeln("Config option 'force_http_2'                 = ", cfg.getValueBool("force_http_2"));
+		writeln("Config option 'force_http_11'                = ", cfg.getValueBool("force_http_11"));
 		writeln("Config option 'debug_https'                  = ", cfg.getValueBool("debug_https"));
 		writeln("Config option 'rate_limit'                   = ", cfg.getValueLong("rate_limit"));
 		writeln("Config option 'operation_timeout'            = ", cfg.getValueLong("operation_timeout"));
@@ -1100,8 +1103,17 @@ int main(string[] args)
 		// value is configured, is it a valid value?
 		if ((cfg.getValueString("azure_ad_endpoint") == "USL4") || (cfg.getValueString("azure_ad_endpoint") == "USL5") || (cfg.getValueString("azure_ad_endpoint") == "DE") || (cfg.getValueString("azure_ad_endpoint") == "CN")) {
 			// valid entries to flag we are using a National Cloud Deployment
+			// National Cloud Deployments do not support /delta as a query
+			// https://docs.microsoft.com/en-us/graph/deployments#supported-features
+			// Flag that we have a valid National Cloud Deployment that cannot use /delta queries
 			sync.setNationalCloudDeployment();
 		}
+	}
+	
+	// Are we forcing to use /children scan instead of /delta to simulate National Cloud Deployment use of /children?
+	if (cfg.getValueBool("force_children_scan")) {
+		log.vdebug("Forcing client to use /children scan rather than /delta to simulate National Cloud Deployment use of /children");
+		sync.setNationalCloudDeployment();
 	}
 
 	// Do we need to validate the syncDir to check for the presence of a '.nosync' file
@@ -1310,6 +1322,7 @@ int main(string[] args)
 				} catch (MonitorException e) {
 					// monitor initialisation failed
 					log.error("ERROR: ", e.msg);
+					oneDrive.shutdown();
 					exit(-1);
 				}
 			}
@@ -1523,7 +1536,8 @@ int main(string[] args)
 						}
 					}
 				}
-				Thread.sleep(dur!"msecs"(500));
+				// Sleep the monitor thread for 1 second, loop around and pick up any inotify changes
+				Thread.sleep(dur!"seconds"(1));
 			}
 		}
 	}
